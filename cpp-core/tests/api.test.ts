@@ -27,4 +27,12 @@ test("public API exposes core symbols", () => {
   expect(typeof cpp.StorageIntegrityError).toBe("function");
   expect(typeof cpp.ResolverTypeMismatchError).toBe("function");
   expect(typeof cpp.SupersessionCycleError).toBe("function");
+
+  // Sprint 3 scaffold (MCP)
+  expect(typeof cpp.parseProvenanceURI).toBe("function");
+  expect(typeof cpp.buildProvenanceURI).toBe("function");
+  expect(typeof cpp.buildResource).toBe("function");
+  expect(typeof cpp.CppMcpServer).toBe("function");
+  expect(typeof cpp.InvalidProvenanceURIError).toBe("function");
+  expect(typeof cpp.McpResourceNotFoundError).toBe("function");
 });

@@ -1,4 +1,4 @@
-export const version = "0.2.0";
+export const version = "0.3.0-scaffold.1";
 
 export { encodeCanonical, decodeCanonical } from "./canonical";
 export { computeCID, cidToString, cidFromString } from "./cid";
@@ -52,3 +52,21 @@ export { Resolver, ResolverTypeMismatchError } from "./storage/resolver";
 
 export type { HasValidity } from "./supersession";
 export { followSupersession, isStale, SupersessionCycleError } from "./supersession";
+
+// Sprint 3 scaffold: MCP integration
+export type { CPPNodeType as MCPCPPNodeType, ParsedProvenanceURI } from "./mcp/uri";
+export {
+  parseProvenanceURI,
+  buildProvenanceURI,
+  InvalidProvenanceURIError,
+} from "./mcp/uri";
+
+export type { McpResource, McpAnnotations } from "./mcp/resource";
+export { buildResource } from "./mcp/resource";
+
+export type {
+  CatalogEntry,
+  CppMcpServerOptions,
+  McpResourceContent,
+} from "./mcp/server";
+export { CppMcpServer, McpResourceNotFoundError } from "./mcp/server";

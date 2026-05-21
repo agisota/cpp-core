@@ -1,8 +1,14 @@
 import type { CID } from "../types/common";
 import type { Resolver } from "../storage/resolver";
+import type { FactNode } from "../types/fact";
+import type { RuleNode } from "../types/rule";
+import type { CalculationActivity } from "../types/calculation";
+import type { EffectNode } from "../types/effect";
 import type { McpResource } from "./resource";
 import { buildResource } from "./resource";
 import { parseProvenanceURI, type CPPNodeType } from "./uri";
+
+type CPPNode = FactNode | RuleNode | CalculationActivity | EffectNode;
 
 export type { CPPNodeType };
 
@@ -75,7 +81,7 @@ export class CppMcpServer {
     };
   }
 
-  private async resolveByType(type: CPPNodeType, cid: CID): Promise<unknown> {
+  private async resolveByType(type: CPPNodeType, cid: CID): Promise<CPPNode | null> {
     switch (type) {
       case "fact":
         return this.resolver.resolveFact(cid);
