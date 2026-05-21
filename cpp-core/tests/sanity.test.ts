@@ -2,5 +2,5 @@ import { test, expect } from "bun:test";
 import { version } from "../src/index";
 
 test("library exports version", () => {
-  expect(version).toBe("0.3.0-scaffold.1");
+  expect(version).toBe("1.0.0-rc.1");
 });

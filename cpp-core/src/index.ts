@@ -1,4 +1,4 @@
-export const version = "0.3.0-scaffold.1";
+export const version = "1.0.0-rc.1";
 
 export { encodeCanonical, decodeCanonical } from "./canonical";
 export { computeCID, cidToString, cidFromString } from "./cid";

@@ -4,7 +4,7 @@ Reference TypeScript implementation of the **Context Provenance Protocol (CPP)**
 
 Sprint 0+1 deliverable: typed nodes (Fact / Rule / Calculation / Effect), canonical DAG-CBOR encoding, CID computation, did:key identity, Ed25519 signatures, and SignedEnvelope wrapper.
 
-**Status:** v0.3.0-scaffold.1 — Core types + storage layer + resolver + supersession + MCP scaffold (URI scheme, Resource shape, pure server handlers). Full JSON-RPC transport is Sprint 3 proper.
+**Status:** v1.0.0-rc.1 — Tier-1 MVP release candidate. Tier 2/3 (consensus, zkML), MCP transport, and privacy layer are post-v1.
 
 ## Install
 
