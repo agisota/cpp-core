@@ -4,7 +4,7 @@ Reference TypeScript implementation of the **Context Provenance Protocol (CPP)**
 
 Sprint 0+1 deliverable: typed nodes (Fact / Rule / Calculation / Effect), canonical DAG-CBOR encoding, CID computation, did:key identity, Ed25519 signatures, and SignedEnvelope wrapper.
 
-**Status:** v0.2.0 — Core types + storage layer + resolver + supersession. No MCP server yet (Sprint 3).
+**Status:** v0.3.0-scaffold.1 — Core types + storage layer + resolver + supersession + MCP scaffold (URI scheme, Resource shape, pure server handlers). Full JSON-RPC transport is Sprint 3 proper.
 
 ## Install
 
@@ -56,6 +56,26 @@ const resolver = new Resolver(storage);
 const factCID = await storage.put(myFact);     // canonical CID, idempotent
 const sameFact = await resolver.resolveFact(factCID);
 ```
+
+## MCP Integration (Sprint 3 scaffold)
+
+```typescript
+import { CppMcpServer, MemoryStorage, Resolver, buildProvenanceURI } from "cpp-core";
+
+const storage = new MemoryStorage();
+const resolver = new Resolver(storage);
+const factCID = await storage.put(myFact);
+
+const server = new CppMcpServer({
+  resolver,
+  catalog: [{ type: "fact", cid: factCID }],
+});
+
+const list = await server.handleListResources();
+const content = await server.handleReadResource(buildProvenanceURI({ type: "fact", cid: factCID }));
+```
+
+Note: Sprint 3 scaffold ships only the protocol primitives (URI scheme, Resource shape, pure handler methods). The full server with JSON-RPC transport and subscriptions is the next sprint.
 
 ## Spec
 

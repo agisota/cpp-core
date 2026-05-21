@@ -6,7 +6,7 @@ through cryptographic content addressing instead of text-blob duplication.
 
 ## Status
 
-**v0.2.0** — Sprint 0–2 complete (core types + storage + resolver + supersession)
+**v0.3.0-scaffold.1** — Sprint 2 complete, Sprint 3 scaffold (MCP URI + Resource + Server stub)
 
 ## Repository Layout
 
