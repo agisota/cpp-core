@@ -1,0 +1,20 @@
+{
+  "name": "cpp-core",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "@ipld/dag-cbor": "^9.2.0",
+    "@noble/ed25519": "^2.1.0",
+    "@noble/hashes": "^1.5.0",
+    "multiformats": "^13.3.0"
+  }
+}
