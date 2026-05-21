@@ -1,4 +1,4 @@
-export const version = "0.1.0";
+export const version = "0.1.1";
 
 export { encodeCanonical, decodeCanonical } from "./canonical";
 export { computeCID, cidToString, cidFromString } from "./cid";

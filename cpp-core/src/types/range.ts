@@ -27,6 +27,12 @@ export function makeCausalDAGNode(input: MakeCausalDAGNodeInput): CausalDAGNode 
   };
 }
 
+/**
+ * Combines two intervals with additive semantics: result.low = a.low + b.low,
+ * result.high = a.high + b.high. Use for weight aggregation where ranges sum.
+ * NOT appropriate for probabilities / confidence intervals — those need bound
+ * clamping which this function does not perform.
+ */
 export function mergeIntervals(a: Interval, b: Interval): Interval {
   return makeInterval(a.low + b.low, a.high + b.high);
 }

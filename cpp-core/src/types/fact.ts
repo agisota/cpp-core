@@ -19,6 +19,10 @@ interface MakeFactNodeInput {
 }
 
 export function makeFactNode(input: MakeFactNodeInput): FactNode {
+  const ts = new Date(input.timestamp);
+  if (isNaN(ts.getTime())) {
+    throw new Error(`Invalid ISO8601 timestamp: ${input.timestamp}`);
+  }
   return {
     type: "fact",
     payload_cid: input.payload_cid,

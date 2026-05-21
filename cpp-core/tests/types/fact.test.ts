@@ -28,4 +28,16 @@ describe("FactNode", () => {
     const factB = makeFactNode(input);
     expect(computeCID(factA).toString()).toBe(computeCID(factB).toString());
   });
+
+  test("rejects FactNode with invalid timestamp", () => {
+    const payloadCID = computeCID({ price: 100 });
+    expect(() =>
+      makeFactNode({
+        payload_cid: payloadCID,
+        source: { did: "did:key:z6MkAlice", role: "trader" },
+        timestamp: "not-a-date",
+        validity: makeValidity({ valid_from: "2026-05-21T00:00:00Z" }),
+      })
+    ).toThrow();
+  });
 });

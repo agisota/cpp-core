@@ -12,9 +12,9 @@ function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
 }
 
 export interface DIDKeyPair {
-  did: DID;
-  publicKey: Uint8Array;
-  privateKey: Uint8Array;
+  readonly did: DID;
+  readonly publicKey: Uint8Array;
+  readonly privateKey: Uint8Array;
 }
 
 export async function generateDIDKey(): Promise<DIDKeyPair> {
