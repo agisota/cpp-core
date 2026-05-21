@@ -47,8 +47,8 @@ console.log(verified.valid); // true
 
 ## Spec
 
-Full design at `/home/dev/serialization_design/2026-05-21-context-provenance-protocol-design.md`.
+Full design at [`../2026-05-21-context-provenance-protocol-design.md`](../2026-05-21-context-provenance-protocol-design.md).
 
 ## License
 
-TBD.
+MIT — see [LICENSE](../LICENSE).
