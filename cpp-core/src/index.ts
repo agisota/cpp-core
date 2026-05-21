@@ -1,10 +1,10 @@
-export const version = "0.1.1";
+export const version = "0.1.2";
 
 export { encodeCanonical, decodeCanonical } from "./canonical";
 export { computeCID, cidToString, cidFromString } from "./cid";
 
 export type { CID, DID, Signature, ISO8601, Interval, AgentRef } from "./types/common";
-export { makeInterval } from "./types/common";
+export { makeInterval, makeConfidence } from "./types/common";
 
 export type { Validity } from "./types/validity";
 export { makeValidity, isExpired } from "./types/validity";

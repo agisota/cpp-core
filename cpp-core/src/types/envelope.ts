@@ -11,6 +11,16 @@ export interface SignedEnvelope<T> {
   readonly signed_at: ISO8601;
 }
 
+/**
+ * Seals a payload in a SignedEnvelope. The canonical encoding binds both
+ * `payload` and `signed_at` together before signing, preventing timestamp
+ * replay attacks.
+ *
+ * **Note on `signedAt` default**: if omitted, uses `new Date().toISOString()`.
+ * Two calls with identical inputs will produce DIFFERENT envelopes because the
+ * implicit timestamps differ. For deterministic outputs (tests, content-addressed
+ * storage), always pass an explicit `signedAt`.
+ */
 export async function sealEnvelope<T>(
   payload: T,
   keypair: DIDKeyPair,

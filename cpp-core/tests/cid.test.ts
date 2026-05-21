@@ -27,4 +27,8 @@ describe("CID computation", () => {
     const s = cidToString(cid);
     expect(s.startsWith("b")).toBe(true);
   });
+
+  test("cidFromString throws on invalid input", () => {
+    expect(() => cidFromString("not-a-cid")).toThrow();
+  });
 });

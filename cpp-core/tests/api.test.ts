@@ -8,6 +8,7 @@ test("public API exposes core symbols", () => {
   expect(typeof cpp.makeEffectNode).toBe("function");
   expect(typeof cpp.makeValidity).toBe("function");
   expect(typeof cpp.makeInterval).toBe("function");
+  expect(typeof cpp.makeConfidence).toBe("function");
   expect(typeof cpp.makeCausalDAGNode).toBe("function");
   expect(typeof cpp.computeCID).toBe("function");
   expect(typeof cpp.encodeCanonical).toBe("function");
