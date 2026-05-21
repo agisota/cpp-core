@@ -6,7 +6,7 @@ through cryptographic content addressing instead of text-blob duplication.
 
 ## Status
 
-**v0.1.2** — Sprint 0+1 complete. Core types library shipped.
+**v0.2.0** — Sprint 0–2 complete (core types + storage + resolver + supersession)
 
 ## Repository Layout
 
@@ -36,8 +36,8 @@ See the [design spec](./2026-05-21-context-provenance-protocol-design.md) for th
 ## Roadmap
 
 - ✅ **Sprint 0+1 (v0.1.x)** — Core types, DAG-CBOR canonical encoding, CID, did:key, SignedEnvelope
-- 🚧 **Sprint 2** — Storage + Resolver + supersession runtime
-- 📋 **Sprint 3** — MCP server with `mcp://provenance/*` URI scheme
+- ✅ **Sprint 2 (v0.2.0)** — Storage + Resolver + supersession runtime
+- 🚧 **Sprint 3** — MCP server with `mcp://provenance/*` URI scheme
 - 📋 **Sprint 4** — Integration with ROX.ONE agentic harness
 - 📋 **Sprint 5** — Polish, npm publish, CLI tooling
 

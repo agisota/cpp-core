@@ -4,7 +4,7 @@ Reference TypeScript implementation of the **Context Provenance Protocol (CPP)**
 
 Sprint 0+1 deliverable: typed nodes (Fact / Rule / Calculation / Effect), canonical DAG-CBOR encoding, CID computation, did:key identity, Ed25519 signatures, and SignedEnvelope wrapper.
 
-**Status:** v0.1.0 — Core types library. No storage, no MCP server yet (those are Sprint 2 and Sprint 3).
+**Status:** v0.2.0 — Core types + storage layer + resolver + supersession. No MCP server yet (Sprint 3).
 
 ## Install
 
@@ -43,6 +43,18 @@ const fact = makeFactNode({
 const signed = await sealEnvelope(fact, alice);
 const verified = await openEnvelope(signed);
 console.log(verified.valid); // true
+```
+
+## Storage + Resolver
+
+```typescript
+import { FilesystemStorage, Resolver } from "cpp-core";
+
+const storage = new FilesystemStorage("/var/lib/cpp/store");
+const resolver = new Resolver(storage);
+
+const factCID = await storage.put(myFact);     // canonical CID, idempotent
+const sameFact = await resolver.resolveFact(factCID);
 ```
 
 ## Spec

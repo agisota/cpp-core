@@ -1,4 +1,4 @@
-export const version = "0.1.2";
+export const version = "0.2.0";
 
 export { encodeCanonical, decodeCanonical } from "./canonical";
 export { computeCID, cidToString, cidFromString } from "./cid";
@@ -39,3 +39,16 @@ export type { DIDKeyPair } from "./identity/did-key";
 export { generateDIDKey, parseDIDKey } from "./identity/did-key";
 export { sign } from "./identity/sign";
 export { verify } from "./identity/verify";
+
+// Sprint 2: Storage + Resolver + Supersession
+export type { Storage } from "./storage/interface";
+export { StorageNotFoundError, StorageIntegrityError } from "./storage/interface";
+
+export { MemoryStorage } from "./storage/memory";
+export { FilesystemStorage } from "./storage/filesystem";
+
+export type { CPPNodeType } from "./storage/resolver";
+export { Resolver, ResolverTypeMismatchError } from "./storage/resolver";
+
+export type { HasValidity } from "./supersession";
+export { followSupersession, isStale, SupersessionCycleError } from "./supersession";
