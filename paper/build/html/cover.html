@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CPP — Cover · Context Provenance Protocol</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+      @top-left   { content: ""; }
+      @top-center { content: ""; }
+      @top-right  { content: ""; }
+      @bottom-center { content: ""; }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 210mm;
+      height: 297mm;
+      overflow: hidden;
+      background: #050505;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      color: #e8e8e0;
+      background: linear-gradient(to bottom, #000000 0%, #0d0d0d 55%, #050505 100%);
+    }
+    .page {
+      width: 210mm;
+      height: 297mm;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16mm 14mm 12mm;
+      position: relative;
+    }
+    .logo {
+      font-size: 9pt;
+      color: #00d4aa;
+      line-height: 1.25;
+      text-align: center;
+      letter-spacing: 0;
+      white-space: pre;
+      margin-bottom: 10mm;
+      text-shadow: 0 0 24px rgba(0,212,170,0.4);
+    }
+    .title-block {
+      text-align: center;
+      margin-bottom: 8mm;
+    }
+    .title {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 28pt;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: #ffffff;
+      line-height: 1.1;
+      margin-bottom: 3mm;
+    }
+    .subtitle {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 10pt;
+      font-weight: 400;
+      color: #888888;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .divider {
+      width: 100%;
+      height: 0.5pt;
+      background: linear-gradient(to right, transparent, rgba(0,212,170,0.35), transparent);
+      margin: 5mm 0;
+    }
+    .tagline {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 10pt;
+      color: #aaaaaa;
+      text-align: center;
+      margin-bottom: 7mm;
+      font-style: italic;
+      letter-spacing: 0.02em;
+    }
+    .toc {
+      width: 100%;
+      border: 0.5pt solid rgba(0,212,170,0.2);
+      border-radius: 3pt;
+      padding: 5mm 6mm;
+      margin-bottom: 7mm;
+      font-size: 8pt;
+      color: #cccccc;
+      line-height: 1.7;
+    }
+    .toc-row {
+      display: flex;
+      gap: 6mm;
+    }
+    .toc-num {
+      color: #00d4aa;
+      font-weight: 700;
+      min-width: 6mm;
+      flex-shrink: 0;
+    }
+    .toc-text {
+      color: #cccccc;
+    }
+    .key-number {
+      background: rgba(0,212,170,0.07);
+      border: 0.5pt solid rgba(0,212,170,0.25);
+      border-radius: 3pt;
+      padding: 4mm 8mm;
+      text-align: center;
+      margin-bottom: 7mm;
+      width: 100%;
+    }
+    .key-number .value {
+      font-size: 30pt;
+      font-weight: 800;
+      color: #00d4aa;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .key-number .label {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 8pt;
+      color: #888888;
+      margin-top: 1.5mm;
+      letter-spacing: 0.04em;
+    }
+    .meta-row {
+      display: flex;
+      gap: 4mm;
+      flex-wrap: wrap;
+      justify-content: center;
+      font-size: 7.5pt;
+      color: #555555;
+      margin-bottom: 5mm;
+    }
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 1.5mm;
+    }
+    .dot {
+      width: 3pt;
+      height: 3pt;
+      border-radius: 50%;
+      background: #00d4aa;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .footer-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 22pt;
+      background: rgba(0,212,170,0.06);
+      border-top: 0.5pt solid rgba(0,212,170,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10mm;
+      font-size: 7pt;
+      color: #444444;
+      letter-spacing: 0.06em;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .footer-bar a { color: #444444; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="logo">  ██████╗ ██████╗  ██████╗
+ ██╔════╝██╔══██╗██╔══██╗
+ ██║     ██████╔╝██████╔╝
+ ██║     ██╔═══╝ ██╔═══╝
+ ╚██████╗██║     ██║
+  ╚═════╝╚═╝     ╚═╝</div>
+
+  <div class="title-block">
+    <div class="title">Context Provenance Protocol</div>
+    <div class="subtitle">Canonical Infrastructure for the AI Economy</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="tagline">Тот, кто канонизирует первым — становится infrastructure layer.</div>
+
+  <div class="toc">
+    <div class="toc-row"><span class="toc-num">01</span><span class="toc-text">Парадокс масштабирования — 687 MB сессий, 13 worktrees, 9 с байт-идентичным контекстом</span></div>
+    <div class="toc-row"><span class="toc-num">02</span><span class="toc-text">Теория канонизации — DAG-CBOR + CIDv1, детерминизм как основа верификации</span></div>
+    <div class="toc-row"><span class="toc-num">03</span><span class="toc-text">Глубинная гипотеза — canonical hashes как substrate для AI feedback loops</span></div>
+    <div class="toc-row"><span class="toc-num">04</span><span class="toc-text">Финансовая модель — $400K ARR Y1 · $12M ARR Y3 · bear / base / bull</span></div>
+    <div class="toc-row"><span class="toc-num">05</span><span class="toc-text">План действий — 12-недельный операционный календарь с конференциями и fundraising</span></div>
+  </div>
+
+  <div class="key-number">
+    <div class="value">−70%</div>
+    <div class="label">экономии на LLM input-токенах для команд с shared context · подтверждено на реальных данных</div>
+  </div>
+
+  <div class="meta-row">
+    <span class="meta-item"><span class="dot"></span>Working paper v0.1</span>
+    <span class="meta-item"><span class="dot"></span>2026-05-21</span>
+    <span class="meta-item"><span class="dot"></span>MIT + CC BY 4.0</span>
+    <span class="meta-item"><span class="dot"></span>83 tests passing</span>
+    <span class="meta-item"><span class="dot"></span>TypeScript + Bun</span>
+  </div>
+
+  <div class="footer-bar">
+    <span>github.com/agisota/cpp-core</span>
+    <span>Issue 01 · 2026-05</span>
+    <span>founder@cpp.dev</span>
+  </div>
+</div>
+</body>
+</html>

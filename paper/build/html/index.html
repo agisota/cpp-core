@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Context Provenance Protocol &#8212; Paper Collection</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0e0f11; color: #e8e8e4; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .hero { background: linear-gradient(160deg, #0e0f11 0%, #131820 60%, #0d1a17 100%); border-bottom: 1px solid rgba(0,212,170,0.15); padding: 80px 24px 64px; text-align: center; }
+    .hero-logo { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: clamp(22px,5vw,40px); font-weight: 700; color: #00d4aa; letter-spacing: 0.14em; margin-bottom: 18px; text-shadow: 0 0 40px rgba(0,212,170,0.35); }
+    .hero-title { font-size: clamp(26px,4vw,46px); font-weight: 700; color: #fff; letter-spacing: -0.025em; line-height: 1.15; margin-bottom: 14px; }
+    .hero-sub { font-size: clamp(14px,2vw,17px); color: #888; max-width: 540px; margin: 0 auto 32px; line-height: 1.65; }
+    .hero-meta { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; font-size: 12px; color: #555; }
+    .hero-meta span { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 5px; height: 5px; border-radius: 50%; background: #00d4aa; display: inline-block; }
+    .main { max-width: 1100px; margin: 0 auto; padding: 60px 24px 80px; }
+    .section-head { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+    .section-head h2 { font-size: 18px; font-weight: 600; color: #fff; white-space: nowrap; }
+    .section-head .line { flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(300px,1fr)); gap: 20px; }
+    .card { background: #13161a; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s; }
+    .card:hover { border-color: rgba(0,212,170,0.3); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,212,170,0.08); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .badge { font-size: 10px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; color: #fff; }
+    .read-time { font-size: 12px; color: #555; }
+    .card-title { font-size: 18px; font-weight: 600; color: #fff; letter-spacing: -0.01em; margin-bottom: 8px; line-height: 1.3; }
+    .card-desc { font-size: 13px; color: #888; line-height: 1.6; flex: 1; margin-bottom: 14px; }
+    .card-stars { font-size: 13px; color: #f0c040; margin-bottom: 16px; letter-spacing: 2px; }
+    .card-actions { display: flex; gap: 10px; }
+    .btn { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; padding: 7px 16px; border-radius: 6px; text-decoration: none; cursor: pointer; transition: background 0.15s; }
+    .btn-pdf { background: #00d4aa; color: #0e0f11; }
+    .btn-pdf:hover { background: #00ebbf; }
+    .btn-html { background: rgba(255,255,255,0.07); color: #ccc; border: 1px solid rgba(255,255,255,0.1); }
+    .btn-html:hover { background: rgba(255,255,255,0.12); color: #fff; }
+    .btn-disabled { opacity: 0.25; cursor: not-allowed; pointer-events: none; }
+    .reading-guide { margin-top: 56px; background: #13161a; border: 1px solid rgba(0,212,170,0.15); border-radius: 12px; padding: 32px; }
+    .reading-guide h2 { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 24px; }
+    .tracks { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 20px; }
+    .track { border-left: 2px solid #00d4aa; padding-left: 16px; }
+    .track-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #00d4aa; margin-bottom: 6px; }
+    .track-name { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+    .track-steps { list-style: none; font-size: 12.5px; color: #777; line-height: 1.9; }
+    .track-steps li::before { content: "&#8594;  "; color: #00d4aa; }
+    footer { text-align: center; padding: 28px 24px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 12px; color: #444; }
+    footer a { color: #00d4aa; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-logo">C &thinsp; P &thinsp; P</div>
+  <h1 class="hero-title">Context Provenance Protocol</h1>
+  <p class="hero-sub">Canonical infrastructure for the AI economy. Complete document corpus &#8212; working paper v0.1.</p>
+  <div class="hero-meta">
+    <span><span class="dot"></span> Working paper v0.1</span>
+    <span><span class="dot"></span> 2026-05-21</span>
+    <span><span class="dot"></span> github.com/agisota/cpp-core</span>
+    <span><span class="dot"></span> MIT + CC BY 4.0</span>
+  </div>
+</div>
+<div class="main">
+  <div class="section-head"><h2>Document Collection</h2><div class="line"></div></div>
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge" style="background:#6c7ae0">Overview</span>
+        <span class="read-time">1 min</span>
+      </div>
+      <h3 class="card-title">Cover Page</h3>
+      <p class="card-desc">CPP working paper cover with logo, table of contents overview, and key number (-70%).</p>
+      <div class="card-stars">★★★★★</div>
+      <div class="card-actions"><a class="btn btn-pdf"  href="../pdf/cover.pdf" target="_blank">PDF</a><a class="btn btn-html" href="cover.html" target="_blank">HTML</a></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge" style="background:#00d4aa">Investor</span>
+        <span class="read-time">8 min</span>
+      </div>
+      <h3 class="card-title">Investor Briefing</h3>
+      <p class="card-desc">Full investor pitch: key metrics, market size, traction, financial scenario, team, risks, and round details.</p>
+      <div class="card-stars">★★★★★</div>
+      <div class="card-actions"><a class="btn btn-pdf"  href="../pdf/investor-briefing.pdf" target="_blank">PDF</a><a class="btn btn-html" href="investor-briefing.html" target="_blank">HTML</a></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge" style="background:#6c7ae0">Overview</span>
+        <span class="read-time">5 min</span>
+      </div>
+      <h3 class="card-title">Executive Summary</h3>
+      <p class="card-desc">One-page summary: numerical hypothesis, TAM/SAM/SOM, investment strategy, team, key risks, and investor paragraph.</p>
+      <div class="card-stars">★★★★★</div>
+      <div class="card-actions"><a class="btn btn-pdf"  href="../pdf/executive-summary.pdf" target="_blank">PDF</a><a class="btn btn-html" href="executive-summary.html" target="_blank">HTML</a></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge" style="background:#1a1a1a">Complete</span>
+        <span class="read-time">60+ min</span>
+      </div>
+      <h3 class="card-title">Master Document</h3>
+      <p class="card-desc">The complete compiled corpus — all sections in one document. Start here for the full picture.</p>
+      <div class="card-stars">★★★★★</div>
+      <div class="card-actions"><a class="btn btn-pdf"  href="../pdf/master.pdf" target="_blank">PDF</a><a class="btn btn-html" href="master.html" target="_blank">HTML</a></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge" style="background:#e07a5f">Technical</span>
+        <span class="read-time">50 min</span>
+      </div>
+      <h3 class="card-title">Main Paper</h3>
+      <p class="card-desc">Full research paper (~15K words): problem, theory, prior art, real validation, economic model, deep hypothesis, architecture, GTM, investment.</p>
+      <div class="card-stars">★★★★★</div>
+      <div class="card-actions"><a class="btn btn-pdf"  href="../pdf/paper-main.pdf" target="_blank">PDF</a><a class="btn btn-html" href="paper-main.html" target="_blank">HTML</a></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge" style="background:#e07a5f">Technical</span>
+        <span class="read-time">20 min</span>
+      </div>
+      <h3 class="card-title">Deep Hypothesis</h3>
+      <p class="card-desc">Philosophical and strategic core: canonical hashes as game-theoretic substrate for AI feedback loops.</p>
+      <div class="card-stars">★★★★☆</div>
+      <div class="card-actions"><a class="btn btn-pdf"  href="../pdf/deep-hypothesis.pdf" target="_blank">PDF</a><a class="btn btn-html" href="deep-hypothesis.html" target="_blank">HTML</a></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge" style="background:#00d4aa">Investor</span>
+        <span class="read-time">15 min</span>
+      </div>
+      <h3 class="card-title">Financial Model</h3>
+      <p class="card-desc">3-year financial model: revenue by year, unit economics (ARPU, CAC, LTV), OpEx, bear/base/bull sensitivity analysis.</p>
+      <div class="card-stars">★★★★★</div>
+      <div class="card-actions"><a class="btn btn-pdf"  href="../pdf/financial-model.pdf" target="_blank">PDF</a><a class="btn btn-html" href="financial-model.html" target="_blank">HTML</a></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge" style="background:#00d4aa">Investor</span>
+        <span class="read-time">3 min</span>
+      </div>
+      <h3 class="card-title">One-Pager</h3>
+      <p class="card-desc">Cold outreach one-pager: problem, solution, metrics, market, team, ask. Fits one scroll.</p>
+      <div class="card-stars">★★★★★</div>
+      <div class="card-actions"><a class="btn btn-pdf"  href="../pdf/one-pager.pdf" target="_blank">PDF</a><a class="btn btn-html" href="one-pager.html" target="_blank">HTML</a></div>
+    </div>
+  </div>
+  <div class="reading-guide">
+    <h2>Suggested Reading Tracks</h2>
+    <div class="tracks">
+      <div class="track">
+        <div class="track-label">Track 1 &#8212; 30 min</div>
+        <div class="track-name">Investor / CEO</div>
+        <ul class="track-steps">
+          <li>Executive Summary (5 min)</li>
+          <li>One-Pager (3 min)</li>
+          <li>Main Paper &#167;&#167;I,II,VI (15 min)</li>
+          <li>Financial Model &#167;&#167;1&#8211;3 (7 min)</li>
+        </ul>
+      </div>
+      <div class="track">
+        <div class="track-label">Track 2 &#8212; 2 hours</div>
+        <div class="track-name">Lead Engineer / Co-founder</div>
+        <ul class="track-steps">
+          <li>Executive Summary (5 min)</li>
+          <li>Main Paper &#167;&#167;I&#8211;IX (50 min)</li>
+          <li>Deep Hypothesis (20 min)</li>
+          <li>Financial Model (15 min)</li>
+        </ul>
+      </div>
+      <div class="track">
+        <div class="track-label">Track 3 &#8212; Full</div>
+        <div class="track-name">Due Diligence Team</div>
+        <ul class="track-steps">
+          <li>Master Document (all-in-one)</li>
+          <li>All appendices</li>
+          <li>All strategy docs</li>
+          <li>4&#8211;6 hours deep read</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<footer>
+  Context Provenance Protocol &#8212; Working paper v0.1 &middot;
+  <a href="https://github.com/agisota/cpp-core">github.com/agisota/cpp-core</a> &middot;
+  MIT (reference impl) &middot; CC BY 4.0 (paper)
+</footer>
+</body>
+</html>

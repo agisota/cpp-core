@@ -1,0 +1,11 @@
+{
+  "name": "cpp-paper-builder",
+  "type": "module",
+  "scripts": {
+    "build": "bun run build.ts"
+  },
+  "dependencies": {
+    "marked": "^14.0.0",
+    "highlight.js": "^11.10.0"
+  }
+}

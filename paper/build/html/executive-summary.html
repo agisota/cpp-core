@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPP — Executive Summary · Context Provenance Protocol</title>
+  <link rel="stylesheet" href="file:///home/dev/serialization_design/paper/build/styles.css">
+  <style>pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#abb2bf;background:#282c34}.hljs-comment,.hljs-quote{color:#5c6370;font-style:italic}.hljs-doctag,.hljs-formula,.hljs-keyword{color:#c678dd}.hljs-deletion,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-subst{color:#e06c75}.hljs-literal{color:#56b6c2}.hljs-addition,.hljs-attribute,.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#98c379}.hljs-attr,.hljs-number,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-pseudo,.hljs-template-variable,.hljs-type,.hljs-variable{color:#d19a66}.hljs-bullet,.hljs-link,.hljs-meta,.hljs-selector-id,.hljs-symbol,.hljs-title{color:#61aeee}.hljs-built_in,.hljs-class .hljs-title,.hljs-title.class_{color:#e6c07b}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}.hljs-link{text-decoration:underline}</style>
+  <style>
+      @page { @top-center { content: "Executive Summary"; font-family: system-ui, -apple-system, sans-serif; font-size: 7.5pt; color: #888888; } }
+    </style>
+</head>
+<body class="">
+  <div class="paper">
+    <h1>Executive Summary</h1>
+<p><strong>Context Provenance Protocol (CPP)</strong> — двухуровневая инфраструктура для агентных и LLM-систем:</p>
+<ol>
+<li><p><strong>Поверхностный уровень (immediate value):</strong> content-addressed serialization, дающий 30-70% экономии на input-токенах для команд с разделяемым контекстом + криптографически верифицируемый audit trail для регулируемых AI-решений.</p>
+</li>
+<li><p><strong>Глубинный уровень (strategic value):</strong> канонический протокол хэширования фактов, событий и суждений, превращающий взаимодействия многоагентных систем в обучающий сигнал для следующего поколения моделей. Тот, кто владеет каноном — владеет training data flywheel.</p>
+</li>
+</ol>
+<hr>
+<h2>Числовая гипотеза</h2>
+<table>
+<thead>
+<tr>
+<th>Метрика</th>
+<th>Без CPP</th>
+<th>С CPP</th>
+<th>Дельта</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Стоимость 200K-токенного контекста, повторённого 30 раз</td>
+<td>$18.00</td>
+<td>$5.40</td>
+<td><strong>−70%</strong></td>
+</tr>
+<tr>
+<td>TTFT (time-to-first-token) на cached prefix</td>
+<td>4.5 с</td>
+<td>0.8 с</td>
+<td><strong>−82%</strong></td>
+</tr>
+<tr>
+<td>Disk usage на 13 worktree-ов с дублирующим контентом</td>
+<td>16 GB</td>
+<td>3.2 GB</td>
+<td><strong>−80%</strong></td>
+</tr>
+<tr>
+<td>Reproducibility audit query «что AI видел в момент X»</td>
+<td>30+ мин grep</td>
+<td>1 SQL</td>
+<td><strong>&gt;1000×</strong></td>
+</tr>
+</tbody></table>
+<p>(Числа — на реальных данных пользователя с машины автора, см. §IV.)</p>
+<h2>Рынок и адресуемая аудитория</h2>
+<p><strong>TAM (2026):</strong> $4.8B — глобальные расходы корпораций на LLM API.
+<strong>SAM:</strong> $1.2B — корпорации с &gt;100 сотрудниками, использующие LLM как часть workflow.
+<strong>SOM (5-летний горизонт):</strong> $180M — компании, для которых CPP даёт ROI &gt;300% в первый год.</p>
+<h2>Инвестиционная стратегия</h2>
+<p>Три параллельных трека:</p>
+<ol>
+<li><strong>Pre-seed ($500K-$1M):</strong> Anthropic Startup Fund + OpenAI Fund + один CIS-based VC (Sber500/Phystech).</li>
+<li><strong>Pilot revenue ($50K-$200K):</strong> 3-5 pilot-контрактов с дружественным энтерпрайзом (Sber, MTS AI, G42).</li>
+<li><strong>Research grant ($300K-$2M):</strong> NSF SBIR / EU Horizon / KAUST research program — на validation feedback-loop hypothesis.</li>
+</ol>
+<h2>Команда минимум жизнеспособного запуска</h2>
+<table>
+<thead>
+<tr>
+<th>Роль</th>
+<th>FTE</th>
+<th>Геолокация</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Tech founder (architecture + protocol)</td>
+<td>1.0</td>
+<td>UAE/CIS</td>
+</tr>
+<tr>
+<td>Research lead (canonical hashing + zkML)</td>
+<td>0.5</td>
+<td>EU/RU</td>
+</tr>
+<tr>
+<td>Go-to-market lead</td>
+<td>1.0</td>
+<td>UAE/MENA</td>
+</tr>
+<tr>
+<td>Senior infra engineer</td>
+<td>1.0</td>
+<td>RU/KZ</td>
+</tr>
+<tr>
+<td>Crypto/security engineer</td>
+<td>0.5</td>
+<td>EU</td>
+</tr>
+<tr>
+<td><strong>Итого</strong></td>
+<td><strong>4.0</strong></td>
+<td></td>
+</tr>
+</tbody></table>
+<h2>Ключевые риски (Top-3)</h2>
+<ol>
+<li><strong>Anthropic меняет cache-key логику</strong> → 1 spec-update пилотов, см. §VII.</li>
+<li><strong>Конкурент (Anthropic сам, Bittensor, Modal) опережает</strong> → защита через open-standard позиционирование.</li>
+<li><strong>Hash decay при апгрейде моделей</strong> → static-validator-model протокол, см. §VII.</li>
+</ol>
+<h2>Один абзац для investora</h2>
+<blockquote>
+<p>«Мы строим каноническую инфраструктуру для верифицируемой провенансности AI-контекста. Сегодня это даёт enterprise клиентам 30-70% экономии на LLM input-токенах и audit-trail для compliance. Завтра — формирует training signal для следующего поколения моделей, где модели обучаются на крипто-верифицированных fact/calculation/effect графах вместо сырого текста. Мы первые, кто закрывает feedback loop на хэшах. Контракт с пилотным enterprise — Q3 2026. Первый канонический grant — Q4 2026.»</p>
+</blockquote>
+<hr>
+<p>См. полный paper в <code>01-PAPER.md</code>.</p>
+
+  </div>
+</body>
+</html>

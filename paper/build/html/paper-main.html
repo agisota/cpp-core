@@ -1,0 +1,1671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPP — Main Paper · Context Provenance Protocol</title>
+  <link rel="stylesheet" href="file:///home/dev/serialization_design/paper/build/styles.css">
+  <style>pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#abb2bf;background:#282c34}.hljs-comment,.hljs-quote{color:#5c6370;font-style:italic}.hljs-doctag,.hljs-formula,.hljs-keyword{color:#c678dd}.hljs-deletion,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-subst{color:#e06c75}.hljs-literal{color:#56b6c2}.hljs-addition,.hljs-attribute,.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#98c379}.hljs-attr,.hljs-number,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-pseudo,.hljs-template-variable,.hljs-type,.hljs-variable{color:#d19a66}.hljs-bullet,.hljs-link,.hljs-meta,.hljs-selector-id,.hljs-symbol,.hljs-title{color:#61aeee}.hljs-built_in,.hljs-class .hljs-title,.hljs-title.class_{color:#e6c07b}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}.hljs-link{text-decoration:underline}</style>
+  <style>
+      @page { @top-center { content: "Working Paper"; font-family: system-ui, -apple-system, sans-serif; font-size: 7.5pt; color: #888888; } }
+    </style>
+</head>
+<body class="">
+  <div class="paper">
+    <div class="title-page">
+  <div class="tp-logo">C&thinsp;P&thinsp;P</div>
+  <h1 class="tp-title">Context Provenance Protocol</h1>
+  <p class="tp-subtitle">От оптимизации затрат к игротеоретической инфраструктуре обратной связи</p>
+  <div class="tp-divider"></div>
+  <div class="tp-meta">Working paper · v0.1 · 2026-05-21<br>github.com/agisota/cpp-core</div>
+</div>
+<h1>Context Provenance Protocol</h1>
+<h2>От оптимизации затрат к игротеоретической инфраструктуре обратной связи</h2>
+<blockquote>
+<p><strong>Working paper</strong> — версия 0.1 (2026-05-21)
+Автор: agisota
+Reference implementation: github.com/agisota/cpp-core (v1.0.0-rc.1)
+Эта работа — основа для будущей научно-индустриальной публикации; данные с пользовательской машины используются с разрешения.</p>
+</blockquote>
+<hr>
+<h2>Оглавление</h2>
+<ul>
+<li>§I. Проблема: почему агентные системы экономически неэффективны</li>
+<li>§II. Теория: что такое канонизация контекста</li>
+<li>§III. История и prior art: чего раньше не было</li>
+<li>§IV. Реальная валидация: данные с продакшен-машины</li>
+<li>§V. Экономическая модель и unit economics</li>
+<li>§VI. Глубинная гипотеза: feedback loops на хэшах</li>
+<li>§VII. Стабильность хэшей: защита от модельного декея</li>
+<li>§VIII. Архитектура и референс-имплементация</li>
+<li>§IX. Стратегия валидации: эксперименты и метрики</li>
+<li>§X. Roadmap по фазам</li>
+<li>§XI. Go-to-market: пилоты и каналы продаж</li>
+<li>§XII. Инвестиционная стратегия и целевые фонды</li>
+<li>§XIII. Команда, юрлица и инфраструктура</li>
+<li>§XIV. Риски и митигации</li>
+<li>§XV. План действий по неделям</li>
+<li>Приложения: математика, ссылки, расчёты, шаблоны документов</li>
+</ul>
+<hr>
+<h1>I. Проблема</h1>
+<h2>1.1. Парадокс масштабирования LLM-агентов</h2>
+<p>В 2024-2026 годах массово появились <strong>многоагентные системы</strong>: Claude Code, Cursor, Cline, Aider, AutoGPT-like harness&#39;ы, RAG-агенты, autonomous research-агенты (Devin, OpenHands, ROX.ONE). Их экономическая природа парадоксальна:</p>
+<pre class=" ascii-art"><code>┌─────────────────────────────────────────────────────────────────┐
+│  ПАРАДОКС: чем больше агентов, тем хуже unit-экономика          │
+└─────────────────────────────────────────────────────────────────┘
+
+  1 агент    →  стоимость = X
+  3 агента   →  стоимость = 3X     (без шеринга контекста)
+  10 агентов →  стоимость = 10X    (linear scaling)
+  100 агентов→  стоимость = 100X   (нет network effect)
+
+Между тем КАЧЕСТВО на агента не растёт линейно. Часто оно
+снижается (контекст-fragmentation, конфликтующие решения).
+
+В классических распределённых системах с ростом узлов растёт
+полезный output (Metcalfe, Reed). В агентных системах сегодня —
+наоборот: с ростом числа агентов растёт стоимость *повторно
+загружаемого* контекста.</code></pre>
+<p><strong>Корень проблемы:</strong> каждый агент сегодня загружает контекст как <strong>opaque text blob</strong>. Нет инфраструктурного слоя, позволяющего нескольким агентам <em>договориться</em>, что они смотрят на один и тот же контент. Провайдеры (Anthropic, OpenAI) внутри кэшируют префиксы, но <strong>client-side нет видимости</strong>, что попадёт в кэш.</p>
+<h2>1.2. Конкретный пример (real-world, не выдуманный)</h2>
+<p>Анализ продакшен-машины пользователя за май 2026:</p>
+<table>
+<thead>
+<tr>
+<th>Метрика</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Общий объём сессий Claude Code</td>
+<td><strong>687 MB</strong></td>
+</tr>
+<tr>
+<td>Главный проект (craft)</td>
+<td><strong>250 MB логов сессий, 16 GB кода</strong></td>
+</tr>
+<tr>
+<td>Активных параллельных worktree&#39;ов на одном репозитории</td>
+<td><strong>13</strong></td>
+</tr>
+<tr>
+<td>Из них с <strong>байт-в-байт идентичным AGENTS.md</strong> (MD5-confirmed)</td>
+<td><strong>9 из 13</strong></td>
+</tr>
+<tr>
+<td>Самая длинная сессия</td>
+<td><strong>11 MB</strong> (≈ 3M токенов контекста)</td>
+</tr>
+<tr>
+<td>Длинных сессий в одном проекте за месяц</td>
+<td><strong>24</strong></td>
+</tr>
+<tr>
+<td>Дублирующих <code>package.json</code> в проекте</td>
+<td><strong>8,562</strong></td>
+</tr>
+<tr>
+<td>Сессий с multi-agent workflow (ralph/autopilot/swarm)</td>
+<td><strong>22</strong></td>
+</tr>
+</tbody></table>
+<p>При средней цене Claude API $3/M input tokens:</p>
+<pre class="hljs"><code class="hljs language-powershell">Грубый расчёт расхода без <span class="hljs-built_in">CPP</span>:
+    <span class="hljs-number">24</span> сессий × <span class="hljs-number">200</span>K tokens/сессия × <span class="hljs-number">10</span> turns × <span class="hljs-variable">$3</span>/Mt
+  = <span class="hljs-number">24</span> × <span class="hljs-number">2</span>M × <span class="hljs-variable">$3</span>/Mt
+  = <span class="hljs-variable">$144</span>/мес ТОЛЬКО на одного разработчика
+  ТОЛЬКО на один проект
+
+С учётом swarm (<span class="hljs-number">7</span> параллельных агентов):
+    <span class="hljs-number">22</span> swarm-сессий × <span class="hljs-number">7</span> × <span class="hljs-number">200</span>K × <span class="hljs-variable">$3</span>/Mt
+  = <span class="hljs-variable">$92</span>.<span class="hljs-number">4</span>/мес дополнительно
+
+Итого: ~<span class="hljs-variable">$236</span>/мес × <span class="hljs-number">1</span> dev × <span class="hljs-number">1</span> проект = ~<span class="hljs-variable">$2</span>,<span class="hljs-number">832</span>/год
+
+Команда из <span class="hljs-number">5</span>: ~<span class="hljs-variable">$14K</span>/год
+Enterprise из <span class="hljs-number">100</span>: ~<span class="hljs-variable">$283K</span>/год
+SaaS-провайдер с <span class="hljs-number">100</span>K юзеров: <span class="hljs-variable">$283M</span>/год теоретически</code></pre>
+<p>И это <strong>с уже работающим prompt caching на стороне Anthropic</strong>. Большая часть этих токенов кэш-миссы — потому что между параллельными агентами и worktree&#39;ами нет синхронизации байтов.</p>
+<h2>1.3. Регуляторная проблема (вторая половина дилеммы)</h2>
+<p>С 2025-2026 года включаются регулирующие требования к AI:</p>
+<ul>
+<li><strong>EU AI Act</strong> (поэтапно 2024-2027): high-risk AI systems обязаны иметь transparency obligations, human oversight, logging, audit trails.</li>
+<li><strong>GDPR Art. 22:</strong> право на explanation для automated decision-making с «significant effect».</li>
+<li><strong>NIST AI RMF (USA):</strong> требует traceability и explainability.</li>
+<li><strong>PCI DSS / HIPAA / SOX:</strong> domain-specific audit logs.</li>
+<li><strong>Russian FZ-152:</strong> обработка персональных данных (включает AI-обработку).</li>
+<li><strong>UAE PDPL (2022):</strong> Federal Decree-Law No. 45 of 2021 (Personal Data Protection).</li>
+<li><strong>Saudi PDPL (2023):</strong> Personal Data Protection Law.</li>
+</ul>
+<p>Все эти регуляции <strong>требуют возможности раскрыть</strong> «как AI пришёл к решению X»: на каких данных, версии модели, в какой момент. Сегодня для AI-команд это означает либо <strong>отказ</strong> от применения LLM в regulated workflow, либо <strong>дорогостоящие homegrown audit-системы</strong> ($1-5M/год на enterprise).</p>
+<p>CPP закрывает обе проблемы одним архитектурным решением.</p>
+<hr>
+<h1>II. Теория</h1>
+<h2>2.1. Что такое канонизация</h2>
+<p>Канонизация — это процесс приведения данных к <strong>единственному, детерминированному</strong> представлению, при котором семантически эквивалентные данные имеют <strong>бит-в-бит</strong> идентичную сериализацию.</p>
+<pre class=" ascii-art"><code>Пример: JSON НЕ канонизирован
+─────────────────────────────
+  {&quot;foo&quot;: 1, &quot;bar&quot;: 2}   → байты A
+  {&quot;bar&quot;: 2, &quot;foo&quot;: 1}   → байты B
+  Семантически одно, но байты разные → разные хэши
+
+Пример: DAG-CBOR канонизирован
+───────────────────────────────
+  Любой объект {foo: 1, bar: 2}     → одни байты
+  Любой объект {bar: 2, foo: 1}     → ТЕ ЖЕ байты
+                                       (ключи отсортированы лексикографически)
+                                       (числа в каноническом представлении)
+                                       (нет factor-N representations)
+  Хэш SHA-256 от этих байт           → детерминированный CID</code></pre>
+<p>DAG-CBOR (RFC 8949 + IPLD-restrictions) — это canonical CBOR с дополнительными ограничениями:</p>
+<ul>
+<li>Только definite-length представления (no streaming markers).</li>
+<li>Integer keys отсортированы.</li>
+<li>Floats только в float64 (без float16/32 variants).</li>
+<li>Нет undefined, simple values только в <code>true</code>, <code>false</code>, <code>null</code>.</li>
+<li>UTF-8 строки в каноническом NFC.</li>
+</ul>
+<h2>2.2. Content-addressed identification (CID)</h2>
+<p>CID — это <strong>отпечаток пальца</strong> контента:</p>
+<pre class="hljs"><code class="hljs language-mipsasm">CID = <span class="hljs-keyword">multihash(SHA-256, </span>DAG-CBOR(canonical(data)))
+
+Анатомия:
+  <span class="hljs-keyword">bafyreif...
+</span>  │└┬┘└────┘
+  │ │   └─── <span class="hljs-keyword">multihash </span><span class="hljs-keyword">digest </span>(<span class="hljs-number">32</span> <span class="hljs-keyword">bytes </span>encoded <span class="hljs-keyword">base32)
+</span>  │ └──────── codec identifier (DAG-CBOR = <span class="hljs-number">0x71</span>)
+  └────────── CID version (<span class="hljs-built_in">v1</span>)</code></pre>
+<p>Свойства CID:</p>
+<ul>
+<li><strong>Verifiable:</strong> дано CID + содержимое → можно проверить за 1ms.</li>
+<li><strong>Collision-resistant:</strong> SHA-256 даёт 2^128 security level.</li>
+<li><strong>Self-describing:</strong> в самом CID закодирован codec и hash function.</li>
+<li><strong>Federable:</strong> CID одинаков везде — на твоей машине, в S3, в IPFS, в чужой системе.</li>
+</ul>
+<h2>2.3. Семантический граф: Fact, Rule, Calculation, Effect</h2>
+<p>CPP формализует структуру агентного контекста через четыре типа узлов, заимствованных из W3C PROV-O (provenance ontology) и расширенных:</p>
+<pre class=""><code>            ┌──────────┐
+            │  Fact    │ ◄── подписанное наблюдение (developer, sensor, API)
+            └────┬─────┘
+                 │ used by
+                 ▼
+  ┌──────────┐ used by  ┌──────────────────┐
+  │  Rule    │─────────►│ CalculationActivity │
+  └──────────┘          │  (агент + model +   │
+       ▲               │   tool_calls + tier)│
+       │ versioned     └──────────┬──────────┘
+       │                          │ wasGeneratedBy
+       │                          ▼
+       │               ┌──────────────────┐
+       │               │   Effect         │
+       │               │   + range structure │
+       │               │   + affected entities│
+       │               └──────────────────┘</code></pre>
+<table>
+<thead>
+<tr>
+<th>Узел</th>
+<th>Семантика</th>
+<th>Подпись</th>
+<th>Пример</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Fact</strong></td>
+<td>Объективное наблюдение</td>
+<td>автор (did:key)</td>
+<td>ADR от разработчика; tick от Bloomberg; X-ray от медустройства</td>
+</tr>
+<tr>
+<td><strong>Rule</strong></td>
+<td>Инструкция для обработки</td>
+<td>authority (did:key)</td>
+<td>«IPC через invoke»; DV01-формула; clinical guideline</td>
+</tr>
+<tr>
+<td><strong>CalculationActivity</strong></td>
+<td>Применение Rules к Facts</td>
+<td>агент (did:key)</td>
+<td>code-review-bot прогнал ADR против policy</td>
+</tr>
+<tr>
+<td><strong>Effect</strong></td>
+<td>Результат с range и confidence</td>
+<td>агент-производитель</td>
+<td>список затронутых файлов, P&amp;L impact, диагностика</td>
+</tr>
+</tbody></table>
+<h2>2.4. Трасты-уровни (Trust Tiers)</h2>
+<p>Не каждое решение требует одинаковой строгости proof&#39;а:</p>
+<pre class="hljs"><code class="hljs language-pgsql">Tier <span class="hljs-number">1</span> — Content-addressing <span class="hljs-keyword">only</span>
+  ──────────────────────────────
+  Цена доказательства: <span class="hljs-meta">$0</span>
+  Дает: integrity (контент не подменён)
+  Кейс: <span class="hljs-number">80</span>% операций — внутренние <span class="hljs-keyword">cache</span>-hits
+
+Tier <span class="hljs-number">2</span> — N-<span class="hljs-keyword">of</span>-M consensus + TEE
+  ──────────────────────────────
+  Цена: <span class="hljs-number">3</span><span class="hljs-number">-5</span>× стоимости инференса
+  Дает: semantic agreement (несколько моделей подтверждают)
+        + hardware-<span class="hljs-keyword">trusted</span> execution
+  Кейс: compliance-reports, mid-stakes решения
+
+Tier <span class="hljs-number">3</span> — zkML proof
+  ──────────────────────────────
+  Цена: <span class="hljs-meta">$0</span><span class="hljs-number">.5</span><span class="hljs-number">-5</span>/proof, <span class="hljs-number">10</span><span class="hljs-number">-60</span>s latency
+  Дает: математическое доказательство
+  Кейс: litigation-grade, SEC filings, regulatory submission</code></pre>
+<p>CPP хранит <code>tier</code> как поле каждого <code>CalculationActivity</code> — приложение выбирает уровень для конкретного workflow.</p>
+<h2>2.5. Подписи и идентичность (did:key)</h2>
+<p>Каждый Fact, Rule, Calculation, Effect подписывается ключом автора:</p>
+<pre class=""><code>SignedEnvelope&lt;T&gt;:
+  payload:    T (FactNode | RuleNode | ...)
+  signer_did: did:key:z6Mk... (Ed25519 public key embedded)
+  signature:  Ed25519(canonical(payload || signed_at))
+  signed_at:  ISO8601</code></pre>
+<p><code>did:key</code> — это W3C-стандартный self-sovereign identifier:</p>
+<ul>
+<li>Публичный ключ <strong>встроен</strong> в DID (нет нужды в registry).</li>
+<li>Verify за 100µs.</li>
+<li>Cross-platform: работает в браузере, Node.js, Bun, Python, Rust.</li>
+</ul>
+<p>Подпись связывает <strong>payload + timestamp</strong> → защита от replay-атак с переотправкой старых подписей.</p>
+<hr>
+<h1>III. История и prior art</h1>
+<h2>3.1. Эволюция подходов к контексту LLM</h2>
+<pre class=" ascii-art"><code>Эра                  Подход                              Проблема
+────────────────────────────────────────────────────────────────────────
+2022-2023            Plain prompt text                   100% дубликация
+                     &quot;System prompt + user message&quot;      Нет дедупа
+                                                         
+Late 2023            Vector RAG                          Решает другую задачу
+                     Embeddings → semantic retrieval     (selection, не dedup)
+                                                         
+Mid 2024             Anthropic prompt caching            Provider-locked
+                     cache_control breakpoints           Single-session TTL
+                                                         Cache key opaque
+                                                         
+Late 2024            Files API                           Provider-specific IDs
+                     OpenAI Files / Anthropic Files      Нет cryptographic guarantee
+                                                         Нет cross-provider sharing
+                                                         
+2025                 MCP Resources                       URI-addressed, не content
+                     mcp://… URIs                        Нет canonical bytes
+                                                         Нет signing
+                                                         
+2026 (CPP)           Content-addressed canonical bytes   ?
+                     + semantic graph
+                     + cryptographic signatures
+                     + tier-aware verification</code></pre>
+<h2>3.2. Соседние технологии (то, что мы переиспользуем)</h2>
+<table>
+<thead>
+<tr>
+<th>Стандарт</th>
+<th>Год</th>
+<th>Что взяли</th>
+<th>Что НЕ взяли</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>DAG-CBOR</strong> (RFC 8949 + IPLD)</td>
+<td>2018</td>
+<td>Canonical bytes</td>
+<td>(полностью)</td>
+</tr>
+<tr>
+<td><strong>CIDv1</strong> (multiformats)</td>
+<td>2017</td>
+<td>Content addressing</td>
+<td>(полностью)</td>
+</tr>
+<tr>
+<td><strong>PROV-O</strong> (W3C)</td>
+<td>2013</td>
+<td>Вокабуляр Entity/Activity/Agent</td>
+<td>RDF serialization (заменили на DAG-CBOR)</td>
+</tr>
+<tr>
+<td><strong>DID Core</strong> (W3C)</td>
+<td>2022</td>
+<td>did:key для identity</td>
+<td>DID-document resolution (отложили)</td>
+</tr>
+<tr>
+<td><strong>MCP Resources</strong> (Anthropic)</td>
+<td>2024</td>
+<td>URI scheme as integration surface</td>
+<td>Provider-internal hashing (расширили)</td>
+</tr>
+<tr>
+<td><strong>W3C VC</strong> (Verifiable Credentials)</td>
+<td>2019</td>
+<td>Signed claims pattern</td>
+<td>JSON-LD overhead (упростили)</td>
+</tr>
+</tbody></table>
+<h2>3.3. Что НЕ существует до CPP</h2>
+<ul>
+<li><strong>Cross-provider canonical encoding для LLM context.</strong> Anthropic и OpenAI имеют разные внутренние cache hashing. Общего стандарта нет.</li>
+<li><strong>Семантически-типизированное content-addressing для agentic workflows.</strong> IPFS даёт generic CID для произвольных байтов; PROV-O даёт семантику без content-addressing. CPP — пересечение.</li>
+<li><strong>Tier-aware verification протокол.</strong> zkML существует, но не интегрирован с content-addressed storage как часть единого протокола.</li>
+<li><strong>Open standard для signed multi-agent provenance.</strong> Каждый framework (LangChain, AutoGen, CrewAI) делает своё.</li>
+</ul>
+<h2>3.4. Конкурентный ландшафт</h2>
+<p>Прямые конкуренты на разные углы:</p>
+<table>
+<thead>
+<tr>
+<th>Конкурент</th>
+<th>Что делает</th>
+<th>Где не пересекается с CPP</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Bittensor / Subnet 23</strong></td>
+<td>Verifiable AI inference через restaking</td>
+<td>Криптоэкосистема, не drop-in для existing harness</td>
+</tr>
+<tr>
+<td><strong>EZKL / Modulus Labs / Giza</strong></td>
+<td>zkML proofs</td>
+<td>Не content-addressing; не multi-agent provenance</td>
+</tr>
+<tr>
+<td><strong>Anthropic prompt caching</strong></td>
+<td>Provider-internal cache</td>
+<td>Single-provider, не client-controllable</td>
+</tr>
+<tr>
+<td><strong>LangChain checkpoints</strong></td>
+<td>State persistence</td>
+<td>Не content-addressed, не verifiable</td>
+</tr>
+<tr>
+<td><strong>W3C Verifiable Credentials</strong></td>
+<td>Signed claims</td>
+<td>Нет content-addressing; JSON-LD heavy</td>
+</tr>
+</tbody></table>
+<p><strong>CPP занимает нишу:</strong> protocol-layer abstraction поверх существующих primitive&#39;ов (IPLD + DID + PROV-O + MCP), оптимизированная под LLM agentic workflows.</p>
+<hr>
+<h1>IV. Реальная валидация</h1>
+<h2>4.1. Машинный аудит (данные пользователя)</h2>
+<p>Anonymized snapshot из реальной dev-машины:</p>
+<pre class="hljs"><code class="hljs language-nix">══════════════════════════════════════════════════════════════════
+              CLAUDE CODE USAGE PATTERN ANALYSIS
+                       <span class="hljs-number">202</span>6-<span class="hljs-number">0</span>5-<span class="hljs-number">21</span> snapshot
+══════════════════════════════════════════════════════════════════
+
+  Storage <span class="hljs-params">footprint:</span>
+  ─────────────────
+  Session logs <span class="hljs-params">total:</span>                 <span class="hljs-number">687</span> MB
+    └── Primary project (craft):      <span class="hljs-number">250</span> MB
+    └── <span class="hljs-symbol">/tmp</span> ephemeral <span class="hljs-params">sessions:</span>      <span class="hljs-number">283</span> MB (<span class="hljs-number">478</span> files)
+    └── Other projects (<span class="hljs-number">7</span>):           <span class="hljs-number">154</span> MB
+  
+  Codebase <span class="hljs-params">footprint:</span>
+  ──────────────────
+  Total primary <span class="hljs-params">project:</span>              <span class="hljs-number">16.0</span> GB
+    └── Parallel worktrees of same <span class="hljs-params">repo:</span> <span class="hljs-number">13</span>
+    └── Identical AGENTS.md files (by MD5): <span class="hljs-number">9</span> of <span class="hljs-number">13</span>
+    └── Duplicate package.json <span class="hljs-params">files:</span>    <span class="hljs-number">8</span>,<span class="hljs-number">562</span>
+    └── Duplicate tsconfig.json <span class="hljs-params">files:</span>     <span class="hljs-number">966</span>
+  
+  Session <span class="hljs-params">patterns:</span>
+  ────────────────
+  Long sessions (<span class="hljs-operator">&gt;</span><span class="hljs-number">1</span>MB) <span class="hljs-keyword">in</span> <span class="hljs-params">primary:</span>        <span class="hljs-number">24</span>
+  Largest single <span class="hljs-params">session:</span>               <span class="hljs-number">11</span> MB  (~<span class="hljs-number">3</span>M tokens of context)
+  Sessions <span class="hljs-keyword">with</span> multi-agent <span class="hljs-params">workflow:</span>     <span class="hljs-number">22</span>
+    └── <span class="hljs-params">ralph-loop:</span>        ~<span class="hljs-number">10</span>
+    └── <span class="hljs-params">autopilot:</span>          ~<span class="hljs-number">6</span>
+    └── swarm <span class="hljs-params">orchestration:</span> ~<span class="hljs-number">6</span>
+  
+  Estimated wasted tokens (back-of-envelope):
+  ──────────────────────────────────────────
+  Same AGENTS.md re-encoded across worktrees per <span class="hljs-params">week:</span>
+    <span class="hljs-number">9</span> worktrees × <span class="hljs-number">6.2</span> KB × <span class="hljs-number">8</span> sessions<span class="hljs-symbol">/week</span> × ~<span class="hljs-number">10</span> turns
+    ≈ <span class="hljs-number">4.5</span> MB × <span class="hljs-number">80</span> <span class="hljs-operator">=</span> <span class="hljs-number">360</span> MB redundant context
+    ≈ <span class="hljs-number">90</span>M tokens <span class="hljs-string">&quot;unnecessarily fresh-encoded&quot;</span> per week
+    
+  At $<span class="hljs-number">3</span><span class="hljs-symbol">/M</span> tokens (Claude Sonnet pricing): $<span class="hljs-number">270</span><span class="hljs-symbol">/week</span> wasted
+  Per dev. On one project. ONE.
+══════════════════════════════════════════════════════════════════</code></pre>
+<h2>4.2. Что это говорит о потенциале</h2>
+<p>Если экстраполировать с честным дисконтом:</p>
+<pre class="hljs"><code class="hljs language-apache"><span class="hljs-attribute">Per</span>-developer waste (conservative): $<span class="hljs-number">150</span>/мес
+<span class="hljs-attribute">Team</span> of <span class="hljs-number">10</span> devs:                  $<span class="hljs-number">1</span>,<span class="hljs-number">500</span>/мес = $<span class="hljs-number">18</span>K/year
+<span class="hljs-attribute">Mid</span>-enterprise <span class="hljs-number">100</span> devs:         $<span class="hljs-number">15</span>,<span class="hljs-number">000</span>/мес = $<span class="hljs-number">180</span>K/year
+<span class="hljs-attribute">Large</span> enterprise <span class="hljs-number">1000</span> devs:    $<span class="hljs-number">150</span>,<span class="hljs-number">000</span>/мес = $<span class="hljs-number">1</span>.<span class="hljs-number">8</span>M/year
+<span class="hljs-attribute">SaaS</span> provider <span class="hljs-number">100</span>K active devs: $<span class="hljs-number">15</span>M/мес = $<span class="hljs-number">180</span>M/year</code></pre>
+<p>И это <strong>только</strong> на уровне cost-saving. Audit-trail value (compliance) и feedback-loop value (training signal) приходят сверху.</p>
+<h2>4.3. Идентификация ICP (Ideal Customer Profile)</h2>
+<p>На основе паттерна выявленного на реальной машине, формируется ICP:</p>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">ICP Tier 1 (immediate buyers)</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Engineering teams 50-500 человек</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Используют Claude Code / Cursor / Cline / Aider</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Имеют общий codebase / shared docs / shared workflow</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Несколько параллельных worktree&#x27;ов или ветвей</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Видят $1,000-50,000/мес расходов на LLM API</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Лидер инжиниринга чувствует &quot;почему-то стало дорого&quot;</span>
+
+<span class="hljs-attribute">ICP Tier 2 (regulatory-driven)</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Финтех, медтех, банки, юриспруденция</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Уже используют LLM для compliance-adjacent задач</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Регулятор требует audit trail</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Cost для них — second-order; primary это compliance risk</span>
+
+<span class="hljs-attribute">ICP Tier 3 (frontier multi-agent)</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Autonomous research teams (Anthropic Engineering, Devin, OpenAI Engineering)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">10+ агентов на одной задаче</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Cost доминирует unit economics</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Уже инвестируют в собственные solutions</span></code></pre>
+<hr>
+<h1>V. Экономическая модель</h1>
+<h2>5.1. Unit economics клиента</h2>
+<p>Простая модель savings:</p>
+<pre class="hljs"><code class="hljs language-erlang">Сэкономлено = (Total_input_tokens × Repetition_ratio) × (Cache_hit_discount)
+
+Где:
+  Total_input_tokens   = месячный input
+  Repetition_ratio     = <span class="hljs-comment">% контекста, который повторяется (0.6-0.95)</span>
+  Cache_hit_discount   = <span class="hljs-number">0.9</span> для Anthropic cached reads (<span class="hljs-number">90</span><span class="hljs-comment">% off)</span>
+
+Пример для <span class="hljs-number">100</span>-dev enterprise:
+  Total_input_tokens   = <span class="hljs-number">100</span> devs × <span class="hljs-number">30</span> sess × <span class="hljs-number">200</span>K × <span class="hljs-number">22</span> day = <span class="hljs-number">13.2</span>B tokens/мес
+  Repetition_ratio     = <span class="hljs-number">0.7</span> (типичный shared codebase)
+  Cache_hit_discount   = <span class="hljs-number">0.9</span>
+  
+  Tokens saved at price = <span class="hljs-number">13.2</span>B × <span class="hljs-number">0.7</span> × <span class="hljs-number">0.9</span> = <span class="hljs-number">8.3</span>B tokens/мес
+  At <span class="hljs-string">$3</span>/M:               <span class="hljs-string">$2</span>4,<span class="hljs-number">900</span>/мес = <span class="hljs-string">$2</span>98K/год потенциальная экономия
+  
+  Realistic capture (<span class="hljs-number">50</span><span class="hljs-comment">%): $149K/год</span></code></pre>
+<h2>5.2. Pricing модель CPP</h2>
+<p>Три варианта монетизации, не взаимоисключающих:</p>
+<h3>Вариант A: SaaS subscription</h3>
+<pre class="hljs"><code class="hljs language-apache"><span class="hljs-attribute">Free</span> tier:    self-hosted, до <span class="hljs-number">10</span> devs
+<span class="hljs-attribute">Team</span>:         $<span class="hljs-number">99</span>/dev/мес (<span class="hljs-number">10</span>-<span class="hljs-number">100</span> devs)
+<span class="hljs-attribute">Enterprise</span>:   $<span class="hljs-number">299</span>/dev/мес (&gt;<span class="hljs-number">100</span> devs, SLA, audit features)</code></pre>
+<p><strong>Pros:</strong> предсказуемый ARR. <strong>Cons:</strong> sales cycle 3-6 мес.</p>
+<h3>Вариант B: Revenue share</h3>
+<pre class=""><code>0% pricing; 20% от documented token savings</code></pre>
+<p><strong>Pros:</strong> Аligned incentives, легко продать. <strong>Cons:</strong> требует измерения и доверия.</p>
+<h3>Вариант C: Infrastructure subscription</h3>
+<pre class=""><code>$5K/мес base + $0.10/1M tokens passing through CPP</code></pre>
+<p><strong>Pros:</strong> scales with usage. <strong>Cons:</strong> сложно прогнозировать.</p>
+<p><strong>Рекомендуемая модель: B+C hybrid:</strong></p>
+<ul>
+<li>Pilot: 0% pricing на 90 дней.</li>
+<li>Convert: 20% of measured savings, минимум $2K/мес.</li>
+<li>Self-hosted: $5K/мес flat для отказывающихся от revenue share.</li>
+</ul>
+<h2>5.3. Cost structure CPP-провайдера</h2>
+<pre class=" ascii-art"><code>Затраты на one $10K MRR enterprise customer:
+─────────────────────────────────────────────
+  CPP storage (S3-equivalent):       $200/мес
+  Verification compute:              $300/мес (Tier 1 only)
+  Audit log retention (7y):          $150/мес
+  Customer success (1/4 FTE):        $2,500/мес
+  Total COGS:                        $3,150/мес (31.5%)
+  
+  Gross margin:                      68.5%</code></pre>
+<p>При scale 100 enterprise customers: $1M MRR, $315K COGS, <strong>$685K gross profit/мес = $8.2M ARR potential</strong>.</p>
+<h2>5.4. TAM/SAM/SOM (с уточнениями)</h2>
+<pre class=" ascii-art"><code>TAM (Total Addressable Market) 2026:
+─────────────────────────────────────
+  Глобальный объём корп. расходов на LLM API:    $4.8B
+  Source: Anthropic + OpenAI + Google revenue 2025-2026
+  
+SAM (Serviceable Addressable Market):
+──────────────────────────────────────
+  Корпорации &gt;100 сотрудников, использующие LLM
+  как часть workflow:                              $1.2B
+  
+SOM (Serviceable Obtainable Market) 5-year:
+────────────────────────────────────────────
+  С учётом достижимой доли рынка ~15%:            $180M</code></pre>
+<p><strong>Realistic 3-year revenue projection:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Год</th>
+<th>Customers</th>
+<th>ARR/customer</th>
+<th>Total ARR</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Y1 (2026)</td>
+<td>5 pilots</td>
+<td>$50K</td>
+<td>$250K</td>
+</tr>
+<tr>
+<td>Y2 (2027)</td>
+<td>25 customers</td>
+<td>$80K</td>
+<td>$2M</td>
+</tr>
+<tr>
+<td>Y3 (2028)</td>
+<td>100 customers</td>
+<td>$120K</td>
+<td>$12M</td>
+</tr>
+</tbody></table>
+<hr>
+<h1>VI. Глубинная гипотеза: feedback loops на хэшах</h1>
+<h2>6.1. Тезис</h2>
+<p>Cost saving — <strong>поверхностный</strong> value. Реальный приз — формирование training signal для следующих поколений моделей.</p>
+<pre class=" ascii-art"><code>ПОВЕРХНОСТНЫЙ СЛОЙ:                  ГЛУБИННЫЙ СЛОЙ:
+─────────────────────                ──────────────────
+  $X/мес savings                       Каноническое представление
+  Audit-trail для compliance           всех {fact, event, judgment, decision}
+  Multi-agent coordination             ↓
+                                       Любая AI-система может:
+                                         - подтвердить, что входы те же
+                                         - воспроизвести вычисление
+                                         - сравнить outcomes объективно
+                                       ↓
+                                       Это позволяет обучать модели
+                                       не на raw text, а на
+                                       CRYPTO-VERIFIED game tuples:
+                                       (context_CID, action_CID, outcome_CID)
+                                       ↓
+                                       Тот, кто владеет каноном —
+                                       владеет training data flywheel.</code></pre>
+<h2>6.2. Аналогии из истории</h2>
+<table>
+<thead>
+<tr>
+<th>Технология</th>
+<th>Канон</th>
+<th>Кто владел</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Поиск 2000-х</td>
+<td>PageRank graph</td>
+<td>Google → монополия</td>
+</tr>
+<tr>
+<td>Social graph 2010-х</td>
+<td>Friend connections</td>
+<td>Facebook → монополия</td>
+</tr>
+<tr>
+<td>RLHF 2022-2024</td>
+<td>Human preference rankings</td>
+<td>Anthropic + OpenAI</td>
+</tr>
+<tr>
+<td><strong>AI feedback 2026+</strong></td>
+<td><strong>Verified outcome tuples</strong></td>
+<td><strong>?</strong> (открытая ниша)</td>
+</tr>
+</tbody></table>
+<h2>6.3. Формальная модель feedback loop</h2>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">Каждое решение AI-агента — это game tuple</span><span class="hljs-punctuation">:
+</span>
+    <span class="hljs-attribute">(S_in, A, S_out, R)
+
+где</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-attribute">S_in   = state input  = CID контекста, который видел агент
+  A      = action       = CID Calculation (model + params + tool_calls)
+  S_out  = state output = CID Effect (что изменилось)
+  R      = reward       = downstream observable (user accepted? bug introduced? cost?)
+
+Сегодня</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">S_in   фрагментирован по миллионам сессий</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">A      опаковый (мы не знаем, что именно модель сделала)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">S_out  сырой текст</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">R      привязан к user (отдельный feedback channel)</span>
+
+<span class="hljs-attribute">С CPP</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">S_in   = CID, дедуплицированный, верифицированный</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">A      = подписанный CalculationActivity с tool_calls</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">S_out  = подписанный EffectNode с range/confidence</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">R      = подписанный Outcome-Fact от downstream observers</span>
+
+<span class="hljs-attribute">ВСЕ ЧЕТЫРЕ становятся cryptographically linked.
+
+Тренировка следующей модели</span><span class="hljs-punctuation">:</span>
+  L = E[(action_predicted | S_in) — A_actual]² 
+      + E[(outcome_predicted | S_in, A) — S_out_actual]²
+      + reward_shaping(R)
+
+Это closed feedback loop на verified data.</code></pre>
+<h2>6.4. Стратегический момент</h2>
+<p>В этом моменте есть <strong>5-летнее окно</strong>, пока:</p>
+<ol>
+<li>Multi-agent системы становятся mainstream (Q3 2026 - 2027).</li>
+<li>Регуляторное давление на AI audit растёт (EU AI Act полностью в силе 2027).</li>
+<li>Frontier модели становятся too expensive to train without verified data.</li>
+<li>Существующие AI labs ещё не зафиксировали канон.</li>
+</ol>
+<p><strong>Кто канонизирует первым — становится infrastructure layer</strong> на уровне HTTP или TCP/IP. Не visible пользователю, но обязательный.</p>
+<h2>6.5. Кто платит за канон?</h2>
+<p>Несколько слоёв willingness-to-pay:</p>
+<pre class="hljs"><code class="hljs language-powershell">Layer <span class="hljs-number">1</span>: Enterprise saving cost (immediate)
+         <span class="hljs-string">&quot;Save 30-70% on LLM bills&quot;</span>          → <span class="hljs-variable">$</span><span class="hljs-variable">$</span><span class="hljs-variable">$</span>
+         
+Layer <span class="hljs-number">2</span>: Regulated industries (audit)
+         <span class="hljs-string">&quot;Verifiable AI for compliance&quot;</span>      → <span class="hljs-variable">$</span><span class="hljs-variable">$</span><span class="hljs-variable">$</span><span class="hljs-variable">$</span>
+         
+Layer <span class="hljs-number">3</span>: AI labs (training signal)
+         <span class="hljs-string">&quot;Buy our verified feedback corpus&quot;</span>  → <span class="hljs-variable">$</span><span class="hljs-variable">$</span><span class="hljs-variable">$</span><span class="hljs-variable">$</span><span class="hljs-variable">$</span><span class="hljs-variable">$</span>
+         (e.g., Anthropic pays <span class="hljs-keyword">for</span> verified
+          human preferences; tomorrow they
+          pay <span class="hljs-keyword">for</span> verified agent outcomes)
+          
+Layer <span class="hljs-number">4</span>: Network effect (infrastructure)
+         <span class="hljs-string">&quot;Everyone uses the canon because
+          it&#x27;s the only way to interop&quot;</span>      → market<span class="hljs-literal">-making</span></code></pre>
+<hr>
+<h1>VII. Стабильность хэшей: защита от модельного декея</h1>
+<h2>7.1. Угроза: hash decay при апгрейде моделей</h2>
+<p>Когда выходит Claude Opus 5 / GPT-5 / Gemini 3:</p>
+<ul>
+<li>Provider может изменить cache_key hashing.</li>
+<li>Старые canonical bytes могут больше не давать те же cache hits.</li>
+<li>Embedding-based семантические эквивалентности drift.</li>
+<li>Sids для генерации могут не воспроизводиться.</li>
+</ul>
+<p><strong>Без защиты — наш протокол распадается каждые 6-12 месяцев.</strong></p>
+<h2>7.2. Решение: статическая модель-валидатор</h2>
+<p>Концепция (заимствована из ZK-rollup architecture):</p>
+<pre class="hljs"><code class="hljs language-pgsql">        ┌──────────────────────────────────────┐
+        │  STATIC CANONICAL <span class="hljs-keyword">VALIDATOR</span> MODEL    │
+        │  (hosted <span class="hljs-keyword">on</span> shared infrastructure)   │
+        │                                      │
+        │  - <span class="hljs-keyword">Open</span> weights                      │
+        │  - Frozen <span class="hljs-keyword">version</span>                    │
+        │  - Multi-party hosted (HuggingFace,  │
+        │    <span class="hljs-keyword">or</span> <span class="hljs-keyword">Open</span> Source AI Foundation)     │
+        │  - SLA для availability              │
+        └──────────────────────────────────────┘
+                  ▲              ▲
+                  │              │
+        Validates │              │ Validates
+                  │              │
+     ┌────────────┴───┐    ┌─────┴──────────┐
+     │  Producer A    │    │  Producer B    │
+     │  uses Claude <span class="hljs-number">5</span> │    │  uses GPT<span class="hljs-number">-5</span>    │
+     │  <span class="hljs-keyword">for</span> inference │    │  <span class="hljs-keyword">for</span> inference │
+     └────────────────┘    └────────────────┘
+     
+  Producer A создаёт Effect.
+  Шлёт его в <span class="hljs-keyword">Validator</span> Model для канонизации.
+  <span class="hljs-keyword">Validator</span> выдаёт hash + semantic embedding.
+  Этот hash детерминирован независимо от того,
+  какую исходную модель использовал producer.</code></pre>
+<h2>7.3. Технические компоненты</h2>
+<table>
+<thead>
+<tr>
+<th>Компонент</th>
+<th>Описание</th>
+<th>Зрелость</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Frozen validator weights</strong></td>
+<td>Один well-defined model checkpoint (например, Llama 3.1 70B при T=0)</td>
+<td>Доступен сегодня</td>
+</tr>
+<tr>
+<td><strong>Deterministic inference runtime</strong></td>
+<td>llama.cpp single-batch CPU mode (битово-воспроизводимый)</td>
+<td>Доступен сегодня</td>
+</tr>
+<tr>
+<td><strong>Distributed hosting (federation)</strong></td>
+<td>HuggingFace Endpoints / TogetherAI / собственная инфра</td>
+<td>Доступен</td>
+</tr>
+<tr>
+<td><strong>Multi-party SLA</strong></td>
+<td>Контрактное обязательство держать checkpoint доступным 5+ лет</td>
+<td>Требует org-уровневой работы</td>
+</tr>
+<tr>
+<td><strong>Polarity validation protocol</strong></td>
+<td>Не точное совпадение, а semantic polarity (positive/negative zone)</td>
+<td>Требует разработки</td>
+</tr>
+</tbody></table>
+<h2>7.4. Protocol: Tonality/Polarity Validation</h2>
+<p>Вместо точного матча байтов — <strong>полярная верификация</strong>:</p>
+<pre class="hljs"><code class="hljs language-gams">Producer A заявляет:  <span class="hljs-string">&quot;Effect X находится в положительной зоне&quot;</span>
+                       (например, <span class="hljs-string">&quot;tests pass&quot;</span>, <span class="hljs-string">&quot;compliance met&quot;</span>)
+                       
+Validator проверяет:
+  <span class="hljs-number">1.</span> Resolve CID X
+  <span class="hljs-number">2.</span> Запустить static <span class="hljs-keyword">model</span> с polarity prompt
+  <span class="hljs-number">3.</span> Получить confidence в polarity claim
+  <span class="hljs-number">4.</span> Подписать verification result
+
+Polarity claims могут быть:
+  - <span class="hljs-keyword">Binary</span>: <span class="hljs-keyword">positive</span>/<span class="hljs-keyword">negative</span>
+  - Triple: <span class="hljs-keyword">positive</span>/neutral/<span class="hljs-keyword">negative</span>
+  - Bounded continuous: [<span class="hljs-number">-1.0</span>, <span class="hljs-number">1.0</span>] с CI
+
+ПРЕИМУЩЕСТВО:
+  - Не требуется точное байтовое совпадение между разными моделями
+  - <span class="hljs-string">&quot;Semantic equivalence&quot;</span> более устойчив к hash decay
+  - Polarity claims можно делать публично (не PII-leaking)</code></pre>
+<h2>7.5. ZK-доказательства для polarity claims</h2>
+<p>Для регулируемых сценариев — zkML proof, что polarity validation прошла:</p>
+<pre class="hljs"><code class="hljs language-applescript">Claim:  <span class="hljs-string">&quot;Effect X is in positive zone with confidence ≥ 0.8&quot;</span>
+
+Proof:  zk-SNARK <span class="hljs-keyword">over</span> static-model-inference circuit <span class="hljs-keyword">that</span>:
+        - Loaded weights_hash = H_model
+        - Ran inference <span class="hljs-keyword">on</span> input = Effect_CID resolved bytes
+        - Output polarity score ≥ <span class="hljs-number">0.8</span>
+        
+Verifier checks proof <span class="hljs-keyword">in</span> &lt;<span class="hljs-number">10</span>ms WITHOUT re-<span class="hljs-built_in">running</span> inference.
+Compliance team accepts proof <span class="hljs-keyword">as</span> audit-grade evidence.</code></pre>
+<p>zkML practical implementations 2026:</p>
+<ul>
+<li><strong>EZKL</strong> (<a href="https://github.com/zkonduit/ezkl">https://github.com/zkonduit/ezkl</a>) — &lt;100M params, proof time 10-60s</li>
+<li><strong>Modulus Labs</strong> — commercial offering</li>
+<li><strong>Giza</strong> — Cairo-based, integration с Starknet</li>
+<li><strong>Ritual</strong> — early stage</li>
+</ul>
+<p>Для статической Llama 3.1 70B сегодня zkML <strong>не работает</strong> напрямую (слишком много параметров). Realistic path:</p>
+<ol>
+<li><strong>Validator distillation:</strong> обучить меньшую модель (~1-10B params) на outputs большой.</li>
+<li><strong>zkML на distilled validator.</strong></li>
+<li><strong>Static checkpoint hosting</strong> для polarity ground truth.</li>
+</ol>
+<hr>
+<h1>VIII. Архитектура и референс-имплементация</h1>
+<h2>8.1. Стек слоёв</h2>
+<pre class=" ascii-art"><code>┌────────────────────────────────────────────────────────────────┐
+│ Layer 9: Industry consortium / standardization                  │
+├────────────────────────────────────────────────────────────────┤
+│ Layer 8: Polarity Validator Model (static, shared)              │ ← Sprint 6+
+├────────────────────────────────────────────────────────────────┤
+│ Layer 7: MCP Server (JSON-RPC transport + subscriptions)        │ ← Sprint 3+
+├────────────────────────────────────────────────────────────────┤
+│ Layer 6: Storage Federation (S3/IPFS/Filecoin)                  │ ← Sprint 2.5+
+├────────────────────────────────────────────────────────────────┤
+│ Layer 5: Resolver + Supersession + Stale-detection             │ ✅ v0.2.0
+├────────────────────────────────────────────────────────────────┤
+│ Layer 4: Storage (Memory + Filesystem)                          │ ✅ v0.2.0
+├────────────────────────────────────────────────────────────────┤
+│ Layer 3: Semantic Graph (Fact/Rule/Calc/Effect + Validity)      │ ✅ v0.1.x
+├────────────────────────────────────────────────────────────────┤
+│ Layer 2: Signatures + Identity (did:key + Ed25519)              │ ✅ v0.1.x
+├────────────────────────────────────────────────────────────────┤
+│ Layer 1: CID + DAG-CBOR (canonical encoding)                    │ ✅ v0.1.x
+└────────────────────────────────────────────────────────────────┘</code></pre>
+<h2>8.2. Reference implementation</h2>
+<p>GitHub: github.com/agisota/cpp-core (public, MIT, v1.0.0-rc.1).</p>
+<pre class=" ascii-art"><code>cpp-core/
+├── src/
+│   ├── canonical.ts       # DAG-CBOR encode/decode
+│   ├── cid.ts             # CID computation (sync SHA-256)
+│   ├── types/             # Fact, Rule, Calculation, Effect, Validity
+│   ├── identity/          # did:key, Ed25519 sign/verify
+│   ├── storage/           # Storage interface + Memory + Filesystem + Resolver
+│   ├── supersession.ts    # Chain follower + stale-fact detection
+│   └── mcp/               # URI scheme + Resource shape + pure handlers
+├── tests/                 # 83 tests, 175 assertions
+├── README.md
+└── CHANGELOG.md</code></pre>
+<p>CI: GitHub Actions, runs in 11-14s. All 83 tests pass under TypeScript strict + bun:test.</p>
+<h2>8.3. Integration surface</h2>
+<p>Три способа интеграции в существующий harness:</p>
+<h3>A. Drop-in library (для контролируемых harness&#39;ов)</h3>
+<pre class="hljs"><code class="hljs language-typescript"><span class="hljs-keyword">import</span> { <span class="hljs-title class_">FilesystemStorage</span>, computeCID } <span class="hljs-keyword">from</span> <span class="hljs-string">&quot;cpp-core&quot;</span>;
+
+<span class="hljs-comment">// В точке загрузки контекста:</span>
+<span class="hljs-keyword">const</span> cid = <span class="hljs-keyword">await</span> storage.<span class="hljs-title function_">put</span>(contextChunk);
+<span class="hljs-comment">// Передать cid в LLM как ссылку или развернуть в полный prompt</span></code></pre>
+<h3>B. MCP server (для harness&#39;ов с MCP support)</h3>
+<pre class="hljs"><code class="hljs language-bash">cpp-mcp-server --storage /var/lib/cpp-store
+<span class="hljs-comment"># Harness подключается через stdio JSON-RPC</span>
+<span class="hljs-comment"># Запрашивает resources по URI mcp://provenance/&lt;type&gt;/&lt;cid&gt;</span></code></pre>
+<h3>C. Shadow-traffic mode (для пилотов)</h3>
+<pre class="hljs"><code class="hljs language-bash">cpp-proxy --upstream https://api.anthropic.com \
+          --capture /var/lib/cpp-capture
+<span class="hljs-comment"># Проксирует requests клиента</span>
+<span class="hljs-comment"># Параллельно делает canonical encoding и хранит CIDs</span>
+<span class="hljs-comment"># НЕ влияет на основной поток</span></code></pre>
+<p>Вариант <strong>C критичен для пилотов</strong> — позволяет measure без modify.</p>
+<hr>
+<h1>IX. Стратегия валидации</h1>
+<h2>9.1. Иерархия гипотез</h2>
+<pre class="hljs"><code class="hljs language-pgsql">H0 (<span class="hljs-keyword">null</span>):    CPP не даёт измеримой экономии.
+H1 (<span class="hljs-keyword">primary</span>): CPP даёт ≥<span class="hljs-number">30</span>% <span class="hljs-keyword">input</span>-token savings на shared-context workflow.
+H2:           Anthropic prompt <span class="hljs-keyword">cache</span> hashing совпадает с CPP canonical bytes.
+H3:           TTFT на cached prefix снижается ≥<span class="hljs-number">50</span>%.
+H4:           Multi-agent coordination <span class="hljs-keyword">value</span> выше <span class="hljs-keyword">cost</span> saving в долгосрок.
+H5:           Static <span class="hljs-keyword">validator</span> model даёт <span class="hljs-keyword">stable</span> polarity classification 
+              independent <span class="hljs-keyword">of</span> upstream model <span class="hljs-keyword">version</span>.
+H6:           Feedback <span class="hljs-keyword">loop</span> на verified game tuples производит better fine-tuning.</code></pre>
+<h2>9.2. План экспериментов (Q3-Q4 2026)</h2>
+<h3>Эксперимент 1: Anthropic cache alignment (Day 1-7)</h3>
+<p><strong>Гипотеза:</strong> Если DAG-CBOR canonical bytes идентичны для двух requests, Anthropic&#39;ий внутренний cache hashing даёт hit.</p>
+<pre class="hljs"><code class="hljs language-python"><span class="hljs-comment"># Pseudocode</span>
+<span class="hljs-keyword">import</span> cpp_core
+context = build_context(...)
+canonical_bytes = cpp_core.encode_canonical(context)
+
+<span class="hljs-comment"># Request 1</span>
+r1 = anthropic.messages.create(
+    model=<span class="hljs-string">&quot;claude-3-5-sonnet&quot;</span>,
+    system=[{
+        <span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;text&quot;</span>,
+        <span class="hljs-string">&quot;text&quot;</span>: decode_to_text(canonical_bytes),
+        <span class="hljs-string">&quot;cache_control&quot;</span>: {<span class="hljs-string">&quot;type&quot;</span>: <span class="hljs-string">&quot;ephemeral&quot;</span>}
+    }],
+    messages=[{<span class="hljs-string">&quot;role&quot;</span>: <span class="hljs-string">&quot;user&quot;</span>, <span class="hljs-string">&quot;content&quot;</span>: <span class="hljs-string">&quot;Question 1&quot;</span>}]
+)
+
+<span class="hljs-comment"># Request 2 (5 минут спустя, ТОТ ЖЕ canonical_bytes)</span>
+r2 = anthropic.messages.create(...)
+
+<span class="hljs-comment"># Метрика:</span>
+<span class="hljs-built_in">print</span>(r2.usage.cache_read_input_tokens)
+<span class="hljs-comment"># Если &gt; 0 → H2 verified</span></code></pre>
+<p><strong>Метрики:</strong></p>
+<ul>
+<li><code>cache_read_input_tokens / total_input_tokens</code> ratio</li>
+<li>TTFT delta</li>
+<li>Cost delta</li>
+</ul>
+<p><strong>Sample size:</strong> 100 requests, 10 контекстов, 3 модели (sonnet, haiku, opus).</p>
+<p><strong>Cost:</strong> $50 для всех тестов.</p>
+<p><strong>Time:</strong> 1-2 дня от kickoff до publication.</p>
+<h3>Эксперимент 2: Multi-worktree dedup (Week 2-3)</h3>
+<p><strong>Setup:</strong> деплоить CPP в shadow mode на одну dev-team из 5 человек с 3+ worktree&#39;ами одного проекта.</p>
+<p><strong>Метрики:</strong></p>
+<ul>
+<li>Cache hit rate за 14 дней</li>
+<li>$ saved vs control week</li>
+<li>Developer-reported TTFT subjective improvement</li>
+<li>Number of unique CIDs vs total context loads (dedup ratio)</li>
+</ul>
+<p><strong>Success criteria:</strong></p>
+<ul>
+<li>Cache hit rate ≥ 40%</li>
+<li>Savings ≥ 25%</li>
+<li>Zero workflow disruption reports</li>
+</ul>
+<h3>Эксперимент 3: Audit-trail replay (Month 2)</h3>
+<p><strong>Setup:</strong> взять 100 архивных AI-решений из прошлого месяца с известными outcomes. Зарегистрировать как Calculations в CPP. Через месяц задать verification query «было ли это решение корректно по правилам v1.0?».</p>
+<p><strong>Метрики:</strong></p>
+<ul>
+<li>Replay accuracy</li>
+<li>Reproducibility под смену модели (Sonnet → Haiku → Opus)</li>
+<li>Time to find specific decision</li>
+</ul>
+<h3>Эксперимент 4: Static validator polarity (Month 3-6)</h3>
+<p><strong>Setup:</strong> обучить distilled polarity validator (1-3B params) на 10K manually-labeled samples. Зафиксировать checkpoint. Запустить через 3 разные modes inference (Claude, GPT, local).</p>
+<p><strong>Метрики:</strong></p>
+<ul>
+<li>Inter-rater agreement (κ statistic)</li>
+<li>Stability across model updates</li>
+<li>Cost of validation per claim</li>
+</ul>
+<h2>9.3. Reverse-validation на исторических данных</h2>
+<p>Главная техническая хитрость для <strong>первой продажи</strong>:</p>
+<blockquote>
+<p>Клиент даёт нам <strong>read-only</strong> доступ к их LLM usage logs за последние 30 дней.
+Мы делаем backward analysis:</p>
+<ol>
+<li>Identify повторяющиеся context patterns (string-level + embedding-level).</li>
+<li>Compute &quot;as-if CPP&quot; cache hit potential.</li>
+<li>Quantify $ saved if CPP было задеплоено в тот период.
+Этот отчёт — наш pre-sales artifact. Customer видит конкретное число до подписания.</li>
+</ol>
+</blockquote>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">Шаблон отчёта</span><span class="hljs-punctuation">:</span>
+<span class="hljs-attribute">═══════════════════════════════════════════════════════
+  CPP RETROACTIVE SAVINGS ANALYSIS
+  Customer</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[REDACTED]</span>
+  <span class="hljs-attribute">Period</span><span class="hljs-punctuation">:</span> <span class="hljs-string">  2026-04-01 to 2026-04-30</span>
+  
+  <span class="hljs-attribute">Total LLM API spend in period</span><span class="hljs-punctuation">:</span> <span class="hljs-string">       $47,300</span>
+  <span class="hljs-attribute">Total input tokens</span><span class="hljs-punctuation">:</span> <span class="hljs-string">                  15.7B</span>
+  
+  <span class="hljs-attribute">Identified repetition patterns</span><span class="hljs-punctuation">:</span>
+    <span class="hljs-attribute">Pattern A (codebase index)</span><span class="hljs-punctuation">:</span> <span class="hljs-string">        62% of system prompts</span>
+    <span class="hljs-attribute">Pattern B (AGENTS.md variants)</span><span class="hljs-punctuation">:</span> <span class="hljs-string">    34% of contexts</span>
+    <span class="hljs-attribute">Pattern C (Linear snapshots)</span><span class="hljs-punctuation">:</span> <span class="hljs-string">      21% of contexts</span>
+    
+  <span class="hljs-attribute">Estimated CPP-with-Anthropic-cache savings</span><span class="hljs-punctuation">:</span>
+    <span class="hljs-attribute">Lower bound</span><span class="hljs-punctuation">:</span> <span class="hljs-string">                       $11,200 (24%)</span>
+    <span class="hljs-attribute">Most likely</span><span class="hljs-punctuation">:</span> <span class="hljs-string">                       $19,800 (42%)</span>
+    <span class="hljs-attribute">Upper bound</span><span class="hljs-punctuation">:</span> <span class="hljs-string">                       $28,900 (61%)</span>
+    
+  <span class="hljs-attribute">Annualized projection</span><span class="hljs-punctuation">:</span>
+    <span class="hljs-attribute">Lower</span><span class="hljs-punctuation">:</span> <span class="hljs-string"> $134K/year saved</span>
+    <span class="hljs-attribute">Likely</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$237K/year saved</span>
+    <span class="hljs-attribute">Upper</span><span class="hljs-punctuation">:</span> <span class="hljs-string"> $347K/year saved</span>
+    
+  <span class="hljs-attribute">Pilot recommendation</span><span class="hljs-punctuation">:</span>
+    <span class="hljs-attribute">Phase 1 (Month 1)</span><span class="hljs-punctuation">:</span> <span class="hljs-string">   Shadow deployment, measurement</span>
+    <span class="hljs-attribute">Phase 2 (Month 2-3)</span><span class="hljs-punctuation">:</span> <span class="hljs-string"> Production traffic on 1 team</span>
+    <span class="hljs-attribute">Phase 3 (Month 4+)</span><span class="hljs-punctuation">:</span> <span class="hljs-string">  Full rollout</span>
+═══════════════════════════════════════════════════════</code></pre>
+<p>Этот отчёт — <strong>главный pre-sales артефакт</strong>.</p>
+<hr>
+<h1>X. Roadmap</h1>
+<h2>10.1. Фаза 0: Foundation (DONE, May 2026)</h2>
+<p>✅ Reference implementation v1.0.0-rc.1 (github.com/agisota/cpp-core)
+✅ Public design document
+✅ Reproducible CI</p>
+<h2>10.2. Фаза 1: Empirical validation (Jun-Aug 2026)</h2>
+<p><strong>Цели:</strong></p>
+<ul>
+<li>Anthropic cache alignment experiment → publish results</li>
+<li>3 friendly pilots (own team + 2 design partners)</li>
+<li>Retroactive savings analysis tool</li>
+</ul>
+<p><strong>Deliverables:</strong></p>
+<ul>
+<li>arXiv preprint: &quot;Cross-provider canonical encoding for LLM context cache alignment&quot;</li>
+<li>3 pilot reports with consenting customers</li>
+<li><code>cpp-cli analyze</code> tool для retroactive savings</li>
+</ul>
+<h2>10.3. Фаза 2: Pre-seed funding + first revenue (Sep-Dec 2026)</h2>
+<p><strong>Цели:</strong></p>
+<ul>
+<li>Pre-seed round $500K-$1M</li>
+<li>5-10 paying pilots</li>
+<li>Sprint 3 proper (MCP transport)</li>
+</ul>
+<p><strong>Deliverables:</strong></p>
+<ul>
+<li>Anthropic Startup Fund application</li>
+<li>OpenAI Fund application</li>
+<li>5 signed pilot contracts (LOIs)</li>
+<li>Working MCP integration with Claude Code, Cursor</li>
+</ul>
+<h2>10.4. Фаза 3: Seed + GTM (Q1-Q2 2027)</h2>
+<p><strong>Цели:</strong></p>
+<ul>
+<li>Seed round $3-5M</li>
+<li>20+ enterprise pilots</li>
+<li>Sprint 4 (Polarity validator MVP)</li>
+</ul>
+<p><strong>Deliverables:</strong></p>
+<ul>
+<li>Multi-region deployment (US/EU/UAE)</li>
+<li>3 enterprise customers signed</li>
+<li>Public benchmark suite</li>
+</ul>
+<h2>10.5. Фаза 4: Scale + Tier 2 (Q3-Q4 2027)</h2>
+<p><strong>Цели:</strong></p>
+<ul>
+<li>Series A $15-25M</li>
+<li>100+ customers, $5M ARR</li>
+<li>N-of-M consensus + TEE attestation</li>
+</ul>
+<p><strong>Deliverables:</strong></p>
+<ul>
+<li>TEE infrastructure deployment</li>
+<li>Industry consortium initiation</li>
+<li>Conference publication (NeurIPS / S&amp;P / USENIX)</li>
+</ul>
+<h2>10.6. Фаза 5: zkML + Feedback loops (2028+)</h2>
+<p><strong>Цели:</strong></p>
+<ul>
+<li>Tier 3 (zkML proofs)</li>
+<li>Feedback corpus product (sell verified game tuples to AI labs)</li>
+<li>Industry standard ratification (W3C / IETF)</li>
+</ul>
+<hr>
+<h1>XI. Go-to-market</h1>
+<h2>11.1. Целевые рынки и их специфика</h2>
+<h3>Россия / CIS</h3>
+<p><strong>Customer profile:</strong></p>
+<ul>
+<li>Sber AI (внутренняя разработка GigaChat, SaluteAI)</li>
+<li>Yandex (YandexGPT, AI-агенты в маркете)</li>
+<li>MTS AI</li>
+<li>Tinkoff (внутренние ML-команды)</li>
+<li>VK (нейросети)</li>
+<li>X5 Group (AI для ритейла)</li>
+</ul>
+<p><strong>Caveats:</strong></p>
+<ul>
+<li>Санкции усложняют использование Claude/OpenAI напрямую</li>
+<li>Но: GigaChat, YandexGPT — те же проблемы агентного контекста</li>
+<li>CPP кросс-провайдерский — это плюс</li>
+</ul>
+<h3>UAE / MENA</h3>
+<p><strong>Customer profile:</strong></p>
+<ul>
+<li>G42 (Inception AI, Jais model)</li>
+<li>TII (Technology Innovation Institute) — Falcon LLM team</li>
+<li>ADNOC (digital transformation)</li>
+<li>Saudi PIF tech investments</li>
+<li>Aramco Digital</li>
+<li>STC (Saudi Telecom)</li>
+<li>Careem (Uber subsidiary, heavy AI usage)</li>
+</ul>
+<p><strong>Caveats:</strong></p>
+<ul>
+<li>Регуляторно проще (UAE PDPL мягче чем GDPR)</li>
+<li>Капитал доступнее</li>
+<li>Sovereign AI initiatives — fit для CPP позиционирования</li>
+</ul>
+<h3>Казахстан</h3>
+<p><strong>Customer profile:</strong></p>
+<ul>
+<li>Kaspi.kz (super-app, heavy AI)</li>
+<li>Halyk Bank</li>
+<li>Beeline KZ</li>
+<li>Astana Hub portfolio companies</li>
+</ul>
+<p><strong>Caveats:</strong></p>
+<ul>
+<li>Меньший рынок, но: bridge между RU и UAE/MENA</li>
+<li>Astana Hub предоставляет visa/business infrastructure</li>
+</ul>
+<h3>Mid-East and West</h3>
+<p><strong>Customer profile:</strong></p>
+<ul>
+<li>Notion, Sourcegraph, Replit (existing Anthropic customers)</li>
+<li>Anthropic itself как enterprise customer for internal use</li>
+<li>Big Four consulting (Deloitte, EY, McKinsey, BCG — все строят AI practices)</li>
+</ul>
+<h2>11.2. Pilot Playbook</h2>
+<h3>Шаг 1: Pre-sales hook (1 неделя)</h3>
+<p>Объект: получить read-only доступ к LLM API logs за последний месяц.</p>
+<p>Outreach script (адаптированный под русско/MENA):</p>
+<pre class="hljs"><code class="hljs language-prolog"><span class="hljs-symbol">Subject</span>: Анализ ваших <span class="hljs-symbol">LLM</span>-расходов: <span class="hljs-number">30</span><span class="hljs-number">-70</span><span class="hljs-comment">% потенциальной экономии</span>
+
+Здравствуйте, [<span class="hljs-symbol">Name</span>],
+
+Видим, что [<span class="hljs-symbol">Company</span>] активно использует <span class="hljs-symbol">LLM</span> в [public use case].
+Мы делаем audit, который выявляет повторяющийся контекст в <span class="hljs-symbol">LLM</span>-сессиях
+и quantifies возможную экономию через content-addressed caching.
+
+Анализ занимает <span class="hljs-number">3</span> дня. Не требует никаких изменений в вашей инфраструктуре.
+Если экономия меньше <span class="hljs-number">20</span><span class="hljs-comment">% — отчёт бесплатный.</span>
+Если больше — пилот по revenue share.
+
+Готовы провести анализ для [<span class="hljs-symbol">Company</span>] на этой неделе?
+
+С уважением,
+[<span class="hljs-symbol">Founder</span>]</code></pre>
+<h3>Шаг 2: Retroactive analysis report (3-5 дней)</h3>
+<p>См. шаблон выше в §9.3. Customer видит конкретные цифры savings.</p>
+<h3>Шаг 3: Pilot agreement (1 неделя)</h3>
+<p>Pilot structure (стандартная):</p>
+<ul>
+<li><strong>Duration:</strong> 90 дней</li>
+<li><strong>Pricing:</strong> 0% pricing на pilot period</li>
+<li><strong>Deployment:</strong> Shadow mode (no production impact)</li>
+<li><strong>Data access:</strong> Read-only, anonymized, customer-controlled storage</li>
+<li><strong>Exit conditions:</strong> Customer может остановить anytime</li>
+<li><strong>Conversion:</strong> Если pilot показывает &gt;$10K/мес savings → convert на revenue share или Enterprise tier</li>
+</ul>
+<h3>Шаг 4: Shadow deployment (Day 1-7)</h3>
+<p><strong>Архитектура deployment:</strong></p>
+<pre class=""><code>                    ┌─────────────────┐
+                    │  Customer's     │
+                    │  LLM API client │
+                    └────────┬────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+              ▼              ▼              ▼
+        ┌─────────┐    ┌─────────┐    ┌─────────┐
+        │ Anthropic│    │ CPP     │    │ Customer│
+        │ API     │    │ Proxy   │    │ logs    │
+        │         │    │ (shadow)│    │ (existing)│
+        └─────────┘    └─────────┘    └─────────┘
+                            │
+                            ▼
+                       ┌─────────────┐
+                       │ CPP measure │
+                       │ DB (theirs) │
+                       └─────────────┘</code></pre>
+<p>CPP-proxy <strong>не модифицирует</strong> трафик. Просто:</p>
+<ul>
+<li>Логирует canonical-encoded bytes для каждого request.</li>
+<li>Compute &quot;what cache hit rate WOULD have been&quot; if CPP были инжектированы.</li>
+<li>Хранит в customer&#39;s storage.</li>
+</ul>
+<p><strong>Установка:</strong> один docker run. 30 секунд. Не требует root.</p>
+<pre class="hljs"><code class="hljs language-bash">docker run -d --name cpp-proxy \
+  -p 9999:9999 \
+  -v /var/lib/cpp-data:/data \
+  -e UPSTREAM=https://api.anthropic.com \
+  agisota/cpp-proxy:rc.1
+  
+<span class="hljs-comment"># Customer changes ANTHROPIC_API_URL=http://localhost:9999/api в одном env file.</span>
+<span class="hljs-comment"># Всё остальное работает как было.</span></code></pre>
+<h3>Шаг 5: Daily report (через первые 7 дней)</h3>
+<p>Customer получает каждое утро email-отчёт:</p>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">═══════════════════════════════════════════════════
+  CPP SHADOW REPORT — Day 7
+  
+  Yesterday</span><span class="hljs-punctuation">:</span>
+    <span class="hljs-attribute">LLM requests captured</span><span class="hljs-punctuation">:</span> <span class="hljs-string">      1,247</span>
+    <span class="hljs-attribute">Unique canonical contexts</span><span class="hljs-punctuation">:</span> <span class="hljs-string">     83</span>
+    <span class="hljs-attribute">Repetition ratio</span><span class="hljs-punctuation">:</span> <span class="hljs-string">              89%</span>
+    
+  <span class="hljs-attribute">Would-be cache hits</span><span class="hljs-punctuation">:</span>
+    <span class="hljs-attribute">Total input tokens</span><span class="hljs-punctuation">:</span> <span class="hljs-string">         14.2M</span>
+    <span class="hljs-attribute">Cached (potential)</span><span class="hljs-punctuation">:</span> <span class="hljs-string">         10.8M (76%)</span>
+    <span class="hljs-attribute">Fresh (necessary)</span><span class="hljs-punctuation">:</span> <span class="hljs-string">           3.4M (24%)</span>
+    
+  <span class="hljs-attribute">Estimated cost saved</span><span class="hljs-punctuation">:</span> <span class="hljs-string">       $35.40</span>
+  
+  <span class="hljs-attribute">Cumulative (7 days)</span><span class="hljs-punctuation">:</span> <span class="hljs-string">      $241.80</span>
+  <span class="hljs-attribute">Projected monthly</span><span class="hljs-punctuation">:</span> <span class="hljs-string">       $1,036.00</span>
+═══════════════════════════════════════════════════</code></pre>
+<h3>Шаг 6: Conversion conversation (Day 30)</h3>
+<p>После 30 дней:</p>
+<ul>
+<li>Customer видит accumulated savings (теоретические).</li>
+<li>Предлагаем production deployment.</li>
+<li>Pricing: 20% от documented savings или $5K/мес minimum.</li>
+</ul>
+<h3>Шаг 7: Production rollout (Month 2+)</h3>
+<p>Phased rollout:</p>
+<ul>
+<li>Week 1: 10% trafic через CPP, остальное direct.</li>
+<li>Week 2: 50%.</li>
+<li>Week 4: 100%.</li>
+<li>Continuous monitoring для отката.</li>
+</ul>
+<h2>11.3. Коммуникационный план: первые 12 недель</h2>
+<pre class="hljs"><code class="hljs language-apache"><span class="hljs-attribute">Week</span> <span class="hljs-number">1</span> (Jun <span class="hljs-number">1</span>-<span class="hljs-number">7</span>):
+  <span class="hljs-attribute">Mon</span>:  Outreach Sber AI (через LinkedIn + warm intro)
+  <span class="hljs-attribute">Tue</span>:  Outreach Yandex Engineering
+  <span class="hljs-attribute">Wed</span>:  Outreach Anthropic Customer Success
+  <span class="hljs-attribute">Thu</span>:  Outreach G42 (через Hub71 introduction)
+  <span class="hljs-attribute">Fri</span>:  Outreach Tinkoff ML platform team
+  
+<span class="hljs-attribute">Week</span> <span class="hljs-number">2</span> (Jun <span class="hljs-number">8</span>-<span class="hljs-number">14</span>):
+  <span class="hljs-attribute">Mon</span>:  First demo call:<span class="hljs-meta"> [whichever responds first]</span>
+  <span class="hljs-attribute">Wed</span>:  Second demo call
+  <span class="hljs-attribute">Thu</span>:  Astana Hub introduction meeting
+  <span class="hljs-attribute">Fri</span>:  Outreach KAUST research group
+  
+<span class="hljs-attribute">Week</span> <span class="hljs-number">3</span> (Jun <span class="hljs-number">15</span>-<span class="hljs-number">21</span>):
+  <span class="hljs-attribute">Tue</span>:  Retroactive analysis #<span class="hljs-number">1</span> delivered
+  <span class="hljs-attribute">Wed</span>:  Retroactive analysis #<span class="hljs-number">2</span> delivered
+  <span class="hljs-attribute">Fri</span>:  First pilot contract signed (target)
+  
+<span class="hljs-attribute">Week</span> <span class="hljs-number">4</span> (Jun <span class="hljs-number">22</span>-<span class="hljs-number">28</span>):
+  <span class="hljs-attribute">Mon</span>:  Pilot <span class="hljs-number">1</span> deployment
+  <span class="hljs-attribute">Wed</span>:  Anthropic Startup Fund application submitted
+  <span class="hljs-attribute">Fri</span>:  OpenAI Fund application submitted
+  
+<span class="hljs-attribute">Week</span> <span class="hljs-number">5</span>-<span class="hljs-number">8</span> (Jul):
+  <span class="hljs-attribute">Pilot</span> <span class="hljs-number">1</span> daily reports
+  <span class="hljs-attribute">Outreach</span> к VC funds (см. §XII)
+  <span class="hljs-attribute">Conference</span> paper draft begun
+  
+<span class="hljs-attribute">Week</span> <span class="hljs-number">9</span>-<span class="hljs-number">12</span> (Aug):
+  <span class="hljs-attribute">Pilot</span> <span class="hljs-number">1</span> conversion conversation
+  <span class="hljs-attribute">Pilot</span> <span class="hljs-number">2</span> deployment
+  <span class="hljs-attribute">arXiv</span> preprint published
+  <span class="hljs-attribute">Pre</span>-seed term sheet (target)</code></pre>
+<hr>
+<h1>XII. Инвестиционная стратегия</h1>
+<h2>12.1. Капитальная структура</h2>
+<pre class=" ascii-art"><code>Раунды:
+─────────────────────────────────────────────
+  Pre-seed (Q3 2026):       $500K-$1M
+    Valuation cap:           $5M
+    Use of funds:            Empirical validation, 2-3 hires
+  
+  Seed (Q1 2027):            $3M-$5M
+    Valuation:               $15-25M
+    Use of funds:            5 enterprise pilots, full team
+  
+  Series A (Q3 2027):        $15M-$25M
+    Valuation:               $80-150M
+    Use of funds:            Geographic expansion, Tier 2/3</code></pre>
+<h2>12.2. Целевые VC фонды (по фазам)</h2>
+<h3>Pre-seed targets (Q3 2026)</h3>
+<p><strong>Anthropic Startup Fund</strong> (<a href="https://www.anthropic.com/startup-fund">https://www.anthropic.com/startup-fund</a>)</p>
+<ul>
+<li>Fit: high (мы DIRECTLY улучшаем Anthropic API economics)</li>
+<li>Check size: $0.5-3M</li>
+<li>Process: warm intro + technical demo</li>
+<li><strong>Action:</strong> apply by Aug 2026</li>
+</ul>
+<p><strong>OpenAI Startup Fund</strong> (<a href="https://openai.fund">https://openai.fund</a>)</p>
+<ul>
+<li>Fit: medium (мы кросс-провайдерские, не lock-in to OpenAI)</li>
+<li>Check size: $1-5M</li>
+<li><strong>Action:</strong> apply Q4 2026</li>
+</ul>
+<p><strong>Sber500</strong> (Russia, Sber&#39;s accelerator)</p>
+<ul>
+<li>Fit: high (Russian AI ecosystem)</li>
+<li>Check size: $100K-1M</li>
+<li>Application: sber500.com</li>
+<li><strong>Action:</strong> apply Q3 2026</li>
+</ul>
+<p><strong>Phystech Ventures</strong> (Russia)</p>
+<ul>
+<li>Fit: medium-high (deep tech focus)</li>
+<li>Check size: $500K-3M</li>
+<li><strong>Action:</strong> intro через MIPT alumni</li>
+</ul>
+<p><strong>Y Combinator</strong> (USA, twice yearly)</p>
+<ul>
+<li>Fit: high (infrastructure + AI)</li>
+<li>Check size: $500K standard</li>
+<li>Application: ycombinator.com</li>
+<li><strong>Action:</strong> apply for W26 batch (deadline ~Sep 2025 для January 2026 batch)</li>
+</ul>
+<p><strong>500 Global MENA</strong> (UAE/SA)</p>
+<ul>
+<li>Fit: high (региональный фокус)</li>
+<li>Check size: $250K-1M</li>
+<li><strong>Action:</strong> apply через MENA office</li>
+</ul>
+<h3>Seed targets (Q1 2027)</h3>
+<p><strong>Andreessen Horowitz (a16z)</strong> — крепкая AI infra thesis
+<strong>Lightspeed Venture Partners</strong> — AI infra focus
+<strong>Sequoia Capital</strong>
+<strong>Index Ventures</strong> (London/SF)
+<strong>G42 Ventures</strong> (UAE) — sovereign AI
+<strong>Mubadala Capital</strong> (UAE)
+<strong>Saudi STV / Sanabil</strong> (KSA)</p>
+<h3>Research grants</h3>
+<p><strong>NSF SBIR Phase I</strong> (USA)</p>
+<ul>
+<li>$275K, 12 months</li>
+<li>Application windows: Sep 2026, Dec 2026</li>
+<li>Eligibility: US-based legal entity</li>
+</ul>
+<p><strong>EU Horizon Europe Cluster 4: Digital, Industry and Space</strong></p>
+<ul>
+<li>Up to €2.5M for cascade-funding</li>
+<li>Open continuously, deadlines quarterly</li>
+<li>Eligibility: EU consortium</li>
+</ul>
+<p><strong>UK Innovate UK Smart Grants</strong></p>
+<ul>
+<li>£25K-2M</li>
+<li>Eligibility: UK presence</li>
+</ul>
+<p><strong>Russian Science Foundation (РНФ)</strong></p>
+<ul>
+<li>5-30M RUB ($60K-360K)</li>
+<li>Open calls 2-3 раза в год</li>
+<li>Eligibility: Russian academic institution</li>
+</ul>
+<p><strong>TII Research Grants</strong> (UAE)</p>
+<ul>
+<li>Открытые programs для AI safety, infrastructure</li>
+<li>Eligibility: UAE-based, или partnership с TII</li>
+</ul>
+<p><strong>KAUST Research Grants</strong> (Saudi)</p>
+<ul>
+<li>$50K-$1M</li>
+<li>Eligibility: academic affiliation, может быть visiting</li>
+</ul>
+<p><strong>Astana Hub Tech Garden Grants</strong> (Kazakhstan)</p>
+<ul>
+<li>$20K-100K</li>
+<li>Eligibility: KZ legal entity</li>
+</ul>
+<h2>12.3. Pitch стратегия</h2>
+<h3>Elevator pitch (30 секунд)</h3>
+<blockquote>
+<p>«Мы строим Stripe для агентных систем. Сегодня каждый AI-агент платит за входные токены — даже за абсолютно те же байты, которые сосед уже отправил минуту назад. Мы делаем content-addressed canonical encoding, которое позволяет агентам делиться контекстом byte-for-byte и автоматически срабатывать на provider-side prompt cache. На реальной dev-machine видим 70% redundant tokens. Reference implementation готова. Ищем pre-seed $500K-$1M для empirical validation и первых 5 пилотов.»</p>
+</blockquote>
+<h3>One-pager (для cold outreach)</h3>
+<p>См. <code>/strategy/one-pager.md</code> (отдельный файл).</p>
+<h3>Deck structure (для warm meetings)</h3>
+<pre class="hljs"><code class="hljs language-apache"><span class="hljs-attribute">Slide</span> <span class="hljs-number">1</span>:  Cover — CPP logo + tagline
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">2</span>:  The problem — <span class="hljs-number">1</span> chart с дублирующими токенами
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">3</span>:  Why now — multi-agent + regulatory pressure
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">4</span>:  Solution overview — canonical hashing in <span class="hljs-number">3</span> steps
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">5</span>:  Reference implementation — github.com/agisota/cpp-core
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">6</span>:  Customer pain — real numbers from user&#x27;s machine
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">7</span>:  Market — TAM $<span class="hljs-number">4</span>.<span class="hljs-number">8</span>B → SOM $<span class="hljs-number">180</span>M
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">8</span>:  Competitive landscape — где мы НЕ конкурируем
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">9</span>:  Deep play — feedback loops <span class="hljs-literal">on</span> hashes (the moonshot)
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">10</span>: Business model — revenue share + SaaS tiers
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">11</span>: Roadmap — <span class="hljs-number">5</span> phases
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">12</span>: Team — founders + advisors
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">13</span>: Ask — $<span class="hljs-number">500</span>K-$<span class="hljs-number">1</span>M pre-seed
+<span class="hljs-attribute">Slide</span> <span class="hljs-number">14</span>: Appendix — math, math, math</code></pre>
+<h2>12.4. Юрисдикции для регистрации</h2>
+<table>
+<thead>
+<tr>
+<th>Юрисдикция</th>
+<th>Pros</th>
+<th>Cons</th>
+<th>Costs</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Delaware C-Corp</strong> (USA)</td>
+<td>Standard for VC, easy fundraising</td>
+<td>Tax, FATCA reporting</td>
+<td>$400 reg + $500/yr</td>
+</tr>
+<tr>
+<td><strong>Delaware via Stripe Atlas</strong></td>
+<td>Turn-key, $500 incl bank</td>
+<td>US-only optimal</td>
+<td>$500 one-time</td>
+</tr>
+<tr>
+<td><strong>ADGM</strong> (Abu Dhabi)</td>
+<td>0% corporate tax (free zone), AI-friendly</td>
+<td>Higher setup costs ($5K)</td>
+<td>$5K + $3K/yr</td>
+</tr>
+<tr>
+<td><strong>DIFC</strong> (Dubai)</td>
+<td>World-class infrastructure, talent</td>
+<td>$10K+ setup</td>
+<td>$10K + $5K/yr</td>
+</tr>
+<tr>
+<td><strong>AIFC</strong> (Astana, Kazakhstan)</td>
+<td>English common law, low tax, RU-friendly</td>
+<td>Less prestige, smaller market</td>
+<td>$1-3K</td>
+</tr>
+<tr>
+<td><strong>Cyprus</strong></td>
+<td>EU, low corp tax (12.5%), favorable</td>
+<td>Brexit-impacts, paperwork</td>
+<td>$2-5K</td>
+</tr>
+<tr>
+<td><strong>Russia (РФ ООО)</strong></td>
+<td>Local market access</td>
+<td>Sanctions complications</td>
+<td>Low (50K RUB)</td>
+</tr>
+</tbody></table>
+<p><strong>Рекомендуемая структура:</strong></p>
+<pre class="hljs"><code class="hljs language-1c">HoldCo<span class="hljs-punctuation">:</span>         Delaware C<span class="hljs-punctuation">-</span>Corp <span class="hljs-punctuation">(</span><span class="hljs-keyword">для</span> VC fundraising<span class="hljs-punctuation">)</span>
+  ↓
+OpCo Russia<span class="hljs-punctuation">:</span>    ООО <span class="hljs-punctuation">(</span><span class="hljs-keyword">для</span> CIS customers <span class="hljs-punctuation">+</span> IP licensing<span class="hljs-punctuation">)</span>
+OpCo UAE<span class="hljs-punctuation">:</span>       ADGM <span class="hljs-keyword">или</span> DIFC <span class="hljs-punctuation">(</span><span class="hljs-keyword">для</span> MENA customers <span class="hljs-punctuation">+</span> tax efficiency<span class="hljs-punctuation">)</span>
+R<span class="hljs-meta">&amp;D arm:        Cyprus (<span class="hljs-keyword">для</span> EU customers + tax)</span></code></pre>
+<p>Bootstrap путь:</p>
+<ol>
+<li><strong>Q3 2026:</strong> Stripe Atlas Delaware ($500). Banking via Mercury.</li>
+<li><strong>Q4 2026:</strong> ADGM SPV ($5K) для MENA pilots.</li>
+<li><strong>2027:</strong> Cyprus или другие EU options если EU pilots.</li>
+</ol>
+<h2>12.5. Visa и легальные перемещения</h2>
+<p>Для founder, путешествующего между юрисдикциями:</p>
+<table>
+<thead>
+<tr>
+<th>Страна</th>
+<th>Visa option</th>
+<th>Cost</th>
+<th>Time</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>UAE</td>
+<td>Golden Visa (10y), entrepreneur category</td>
+<td>~$3K</td>
+<td>30 дней</td>
+</tr>
+<tr>
+<td>UAE</td>
+<td>Green Visa (5y), freelancer</td>
+<td>$1K</td>
+<td>14 дней</td>
+</tr>
+<tr>
+<td>Kazakhstan</td>
+<td>Astana Hub Tech Visa (5y)</td>
+<td>бесплатно</td>
+<td>7 дней</td>
+</tr>
+<tr>
+<td>Cyprus</td>
+<td>Permanent Residence by investment</td>
+<td>€300K</td>
+<td>6 мес</td>
+</tr>
+<tr>
+<td>Estonia</td>
+<td>e-Residency + дист. company</td>
+<td>€100</td>
+<td>1 мес</td>
+</tr>
+</tbody></table>
+<p><strong>Рекомендуемая комбинация:</strong></p>
+<ul>
+<li>Astana Hub Tech Visa (immediate, free, базовая).</li>
+<li>UAE Golden Visa (long-term, prestige).</li>
+<li>Estonia e-Residency (для EU activity).</li>
+</ul>
+<p>Сценарий перелёта первой регистрации:</p>
+<pre class="hljs"><code class="hljs language-sql"><span class="hljs-keyword">Day</span> <span class="hljs-number">1</span>: Online application Astana Hub (https:<span class="hljs-operator">/</span><span class="hljs-operator">/</span>astanahub.com)
+<span class="hljs-keyword">Day</span> <span class="hljs-number">7</span>: Approval, fly <span class="hljs-keyword">to</span> Almaty<span class="hljs-operator">/</span>Astana
+<span class="hljs-keyword">Day</span> <span class="hljs-number">8</span>: <span class="hljs-keyword">Local</span> registration <span class="hljs-keyword">at</span> Astana Hub
+<span class="hljs-keyword">Day</span> <span class="hljs-number">10</span>: Bank account <span class="hljs-keyword">at</span> Halyk <span class="hljs-operator">/</span> Forte
+<span class="hljs-keyword">Day</span> <span class="hljs-number">14</span>: KZ<span class="hljs-operator">-</span>OOO registered, ready <span class="hljs-keyword">for</span> <span class="hljs-keyword">first</span> transactions</code></pre>
+<hr>
+<h1>XIII. Команда, юрлица, инфраструктура</h1>
+<h2>13.1. Core team (Year 1)</h2>
+<pre class=" ascii-art"><code>Tech Founder/CEO              1.0 FTE   UAE base
+  - Vision, fundraising, lead architecture
+  - Background: AI infrastructure + business
+  
+Research Lead                 0.5 FTE   Russia/EU
+  - Canonical hashing, zkML, polarity validation
+  - Background: PhD in CS / cryptography
+  
+Senior Infra Engineer         1.0 FTE   Russia/Kazakhstan
+  - Bun/TypeScript, distributed systems
+  - Background: 5+ years backend
+  
+GTM Lead                      1.0 FTE   UAE
+  - Sales, partnerships, customer success
+  - Background: enterprise SaaS sales
+  
+Crypto/Security Engineer      0.5 FTE   EU
+  - Ed25519, hash security, audit
+  - Background: blockchain or security consulting
+  
+─────────────────────────────────────
+Total:                        4.0 FTE
+Burn rate:                    $50K-80K/мес (с учётом geographic arbitrage)</code></pre>
+<h2>13.2. Advisors (target)</h2>
+<ul>
+<li><strong>Cryptography/zkML expert:</strong> EZKL team, Modulus Labs, или academic</li>
+<li><strong>AI infrastructure:</strong> Ex-Anthropic / OpenAI engineer</li>
+<li><strong>Enterprise sales:</strong> Snowflake, Datadog, Confluent veteran</li>
+<li><strong>Regulatory:</strong> ex-EU AI Act WG member или US AI safety counsel</li>
+<li><strong>MENA market:</strong> G42 / Mubadala alumni</li>
+</ul>
+<h2>13.3. Инфраструктура</h2>
+<pre class="hljs"><code class="hljs language-nix"><span class="hljs-params">Development:</span>
+  <span class="hljs-params">Source:</span>         GitHub (open core)
+  <span class="hljs-params">CI:</span>             GitHub Actions
+  <span class="hljs-params">Package:</span>        NPM (cpp-core) <span class="hljs-operator">+</span> Docker (cpp-mcp-server)
+  
+<span class="hljs-params">Production:</span>
+  <span class="hljs-params">Hosting:</span>        AWS multi-region (US-East, EU-West, ME-South-<span class="hljs-number">1</span> Bahrain)
+  <span class="hljs-params">Storage:</span>        S3 <span class="hljs-operator">+</span> CloudFront для CIDs
+  <span class="hljs-params">Compute:</span>        ECS Fargate для validator inference
+  <span class="hljs-params">Database:</span>       PostgreSQL (RDS) для metrics
+  
+Validator <span class="hljs-params">hosting:</span>
+  <span class="hljs-params">Primary:</span>        HuggingFace Endpoints для polarity model
+  <span class="hljs-params">Backup:</span>         Self-hosted на TII compute (UAE)
+  <span class="hljs-params">Tertiary:</span>       Together.ai <span class="hljs-symbol">/</span> Replicate
+  
+<span class="hljs-params">Monitoring:</span>
+  <span class="hljs-params">Metrics:</span>        Grafana Cloud
+  <span class="hljs-params">Logs:</span>           Datadog
+  <span class="hljs-params">Errors:</span>         Sentry
+  <span class="hljs-params">Status:</span>         status.cpp.dev</code></pre>
+<hr>
+<h1>XIV. Риски и митигации</h1>
+<table>
+<thead>
+<tr>
+<th>Риск</th>
+<th>Вероятность</th>
+<th>Импакт</th>
+<th>Митигация</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Anthropic меняет cache logic</td>
+<td>Medium</td>
+<td>High</td>
+<td>Spec-update своего канонизатора + diversify к OpenAI/Google cache</td>
+</tr>
+<tr>
+<td>Anthropic/OpenAI делает competing protocol</td>
+<td>Low-Med</td>
+<td>Critical</td>
+<td>Open standard позиционирование; speed to market</td>
+</tr>
+<tr>
+<td>Hash decay при апгрейде моделей</td>
+<td>High</td>
+<td>Medium</td>
+<td>Polarity validator с frozen weights (§VII)</td>
+</tr>
+<tr>
+<td>Pilot не показывает экономию</td>
+<td>Medium</td>
+<td>High</td>
+<td>Retroactive analysis перед pilot — фильтр</td>
+</tr>
+<tr>
+<td>Customer concerns о privacy CIDs</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Encryption layer (H), capability tokens — backlog</td>
+</tr>
+<tr>
+<td>Регуляторное давление на open AI canonization</td>
+<td>Low</td>
+<td>High</td>
+<td>EU AI Act compliance работает В НАШУ пользу</td>
+</tr>
+<tr>
+<td>Founder bandwidth (single point of failure)</td>
+<td>High</td>
+<td>Critical</td>
+<td>Co-founder hiring приоритет 1</td>
+</tr>
+<tr>
+<td>Capital efficiency vs frontier competition</td>
+<td>Medium</td>
+<td>High</td>
+<td>Strict 18-month runway between rounds</td>
+</tr>
+</tbody></table>
+<hr>
+<h1>XV. План действий: следующие 12 недель</h1>
+<h2>Week 1 (Jun 1-7, 2026): Validation kickoff</h2>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">Mon</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Run Anthropic cache alignment experiment</span>
+     <span class="hljs-attribute">Script in /paper/experiments/exp1-cache-alignment.py
+     Cost</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$50, time: 4 hours</span>
+     
+<span class="hljs-attribute">Tue</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Publish results (or &quot;no alignment&quot; finding)</span>
+     <span class="hljs-attribute">Public gist + tweet thread
+     
+Wed-Thu</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Build cpp-cli analyze tool</span>
+     <span class="hljs-attribute">Reads anonymized API logs, produces retroactive savings report
+     
+Fri</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Outreach batch #1 (15 companies):</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Sber AI (через LinkedIn)</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Yandex Engineering</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Tinkoff ML platform</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Cursor</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Sourcegraph</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">G42 Inception</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">TII Falcon team</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Anthropic CS</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Replit</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Bedrock (AWS)</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Notion AI</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Glean</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">Pinecone</span>
+     <span class="hljs-bullet">-</span> <span class="hljs-string">10 startups через Y Combinator network</span></code></pre>
+<h2>Week 2-4 (Jun 8-28): First pilots + Y Combinator app</h2>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">Week 2</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-attribute">Mon-Wed</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Demo calls (3-5 expected)</span>
+  <span class="hljs-attribute">Thu</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Deliver first retroactive analysis</span>
+  <span class="hljs-attribute">Fri</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Astana Hub Tech Visa application</span>
+
+<span class="hljs-attribute">Week 3</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-attribute">Mon</span><span class="hljs-punctuation">:</span> <span class="hljs-string">First pilot contract signing (target)</span>
+  <span class="hljs-attribute">Wed</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Anthropic Startup Fund application</span>
+  <span class="hljs-attribute">Fri</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Y Combinator W26 application</span>
+
+<span class="hljs-attribute">Week 4</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-attribute">Mon</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Pilot deployment</span>
+  <span class="hljs-attribute">Wed</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Public benchmark suite published</span>
+  <span class="hljs-attribute">Fri</span><span class="hljs-punctuation">:</span> <span class="hljs-string">arXiv preprint draft begun</span></code></pre>
+<h2>Week 5-8 (Jul): Validation accumulates</h2>
+<pre class="hljs"><code class="hljs language-apache"><span class="hljs-attribute">Week</span> <span class="hljs-number">5</span>: Pilot <span class="hljs-number">1</span> daily reports begin
+<span class="hljs-attribute">Week</span> <span class="hljs-number">6</span>: Demo calls #<span class="hljs-number">6</span>-<span class="hljs-number">10</span>
+<span class="hljs-attribute">Week</span> <span class="hljs-number">7</span>: Second pilot contract
+<span class="hljs-attribute">Week</span> <span class="hljs-number">8</span>: Pre-seed fundraising kickoff</code></pre>
+<h2>Week 9-12 (Aug): Pre-seed close</h2>
+<pre class="hljs"><code class="hljs language-pgsql">Week <span class="hljs-number">9</span>: Term sheet conversations
+Week <span class="hljs-number">10</span>: First pilot <span class="hljs-number">30</span>-day <span class="hljs-keyword">conversion</span>
+Week <span class="hljs-number">11</span>: arXiv preprint published
+Week <span class="hljs-number">12</span>: Pre-seed <span class="hljs-keyword">close</span> (<span class="hljs-meta">$500</span>K-<span class="hljs-meta">$1</span>M target)</code></pre>
+<hr>
+<h1>Заключение</h1>
+<p>Context Provenance Protocol — это <strong>dual-track play</strong>:</p>
+<ol>
+<li><p><strong>Tactical, immediate:</strong> content-addressed canonical encoding даёт 30-70% экономии на input-токенах для команд с shared context. Reference implementation готова, пилоты можно начинать <strong>на этой неделе</strong>.</p>
+</li>
+<li><p><strong>Strategic, 5-year:</strong> канонизация фактов и суждений становится infrastructure layer для следующего поколения AI. Тот, кто стандартизирует — владеет training data flywheel.</p>
+</li>
+</ol>
+<p>Текущий артефакт (cpp-core v1.0.0-rc.1) — <strong>технически готовая foundation</strong>. Что нужно дальше:</p>
+<ul>
+<li><strong>Empirical validation</strong> (4 экспериментов в §IX)</li>
+<li><strong>First pilots</strong> (3-5 в §XI)</li>
+<li><strong>Pre-seed funding</strong> ($500K-$1M в §XII)</li>
+</ul>
+<p>Окно времени: <strong>18 месяцев</strong> до того, как либо Anthropic, либо Bittensor, либо новый игрок займёт canonical layer.</p>
+<p>Реальный value сегодня: <strong>dev&#39;у с 13 параллельными worktree&#39;ями ROX.ONE</strong> — это означает $200-500/мес savings и formal multi-agent coordination. Завтра — рыночная категория с TAM $4.8B.</p>
+<p><strong>Следующее действие:</strong> запустить Эксперимент 1 (cache alignment) в понедельник. Стоимость: $50. Время: 4 часа. Information value: критическая.</p>
+<hr>
+<p>См. также:</p>
+<ul>
+<li><code>00-EXECUTIVE-SUMMARY.md</code> — короткая версия</li>
+<li><code>appendices/01-math.md</code> — математические выкладки</li>
+<li><code>appendices/02-pilots-pipeline.csv</code> — список target customers</li>
+<li><code>appendices/03-fund-targets.csv</code> — список fund targets</li>
+<li><code>strategy/one-pager.md</code> — investor one-pager</li>
+<li><code>strategy/deck-outline.md</code> — pitch deck structure</li>
+<li><code>strategy/pilot-contract-template.md</code> — template для pilot agreements</li>
+</ul>
+
+<div class="colophon">
+  <h2>Colophon</h2>
+  <p>Set in Inter and JetBrains Mono via system-ui stack.</p>
+  <p>Rendered Markdown &rarr; HTML &rarr; PDF via marked + Chromium headless.</p>
+  <p>Source: <a href="https://github.com/agisota/cpp-core">github.com/agisota/cpp-core</a></p>
+  <p>Version: 0.1 &middot; 2026-05-21</p>
+  <p>Contact: <a href="mailto:founder@cpp.dev">founder@cpp.dev</a></p>
+  <p>CPP is an open standard, MIT licensed. This paper is the working draft, version&nbsp;0.1.</p>
+</div>
+
+  </div>
+</body>
+</html>

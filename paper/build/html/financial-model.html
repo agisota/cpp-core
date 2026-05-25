@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPP — Financial Model · Context Provenance Protocol</title>
+  <link rel="stylesheet" href="file:///home/dev/serialization_design/paper/build/styles.css">
+  <style>pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#abb2bf;background:#282c34}.hljs-comment,.hljs-quote{color:#5c6370;font-style:italic}.hljs-doctag,.hljs-formula,.hljs-keyword{color:#c678dd}.hljs-deletion,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-subst{color:#e06c75}.hljs-literal{color:#56b6c2}.hljs-addition,.hljs-attribute,.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#98c379}.hljs-attr,.hljs-number,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-pseudo,.hljs-template-variable,.hljs-type,.hljs-variable{color:#d19a66}.hljs-bullet,.hljs-link,.hljs-meta,.hljs-selector-id,.hljs-symbol,.hljs-title{color:#61aeee}.hljs-built_in,.hljs-class .hljs-title,.hljs-title.class_{color:#e6c07b}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}.hljs-link{text-decoration:underline}</style>
+  <style>
+      @page { @top-center { content: "Financial Model"; font-family: system-ui, -apple-system, sans-serif; font-size: 7.5pt; color: #888888; } }
+    </style>
+</head>
+<body class="">
+  <div class="paper">
+    <h1>Финансовая модель: 3 года</h1>
+<blockquote>
+<p><em>Версия 0.1 (2026-05-21). Рабочая финансовая модель для investor due diligence
+и board reporting. Все числа — на основе публичных данных и industry comparables.</em></p>
+</blockquote>
+<hr>
+<h2>I. Обзор: три сценария</h2>
+<pre class=" ascii-art"><code>╭───────────────────────────────────────────────────────────────────────────╮
+│                                                                           │
+│   BEAR              BASE               BULL                              │
+│   ────────          ────────           ────────                          │
+│   Y1: $100K ARR     Y1: $250K ARR      Y1: $500K ARR                    │
+│   Y2: $600K ARR     Y2: $2M ARR        Y2: $5M ARR                      │
+│   Y3: $2.5M ARR     Y3: $12M ARR       Y3: $30M ARR                     │
+│                                                                           │
+│   Runway to Series A  →  Q3 2027  ←  same across scenarios              │
+│   Pre-seed close:  Q4 2026 (all scenarios)                               │
+│                                                                           │
+╰───────────────────────────────────────────────────────────────────────────╯</code></pre>
+<hr>
+<h2>II. Revenue projections</h2>
+<h3>2.1. Customer count и ARPU</h3>
+<p>Три tier&#39;а клиентов с различным ARPU и циклом продаж:</p>
+<pre class=" ascii-art"><code>Customer Tiers:
+───────────────────────────────────────────────────────────────────────────
+
+Tier 1: Developer Teams (SMB)
+  Profile: engineering team 10-50 devs, SaaS / fintech / AI-native startup
+  ACV (Annual Contract Value): $24K-$60K ($2K-$5K/мес)
+  Sales cycle: 30-60 days
+  Churn rate: 15% annual (SMB is higher churn)
+  Gross margin: 75%
+  How won: self-serve + PLG motion (cpp-cli analyze → convert)
+
+Tier 2: Enterprise
+  Profile: enterprise 100-500 devs, regulated industry / large tech
+  ACV: $120K-$360K ($10K-$30K/мес)
+  Sales cycle: 90-180 days
+  Churn rate: 7% annual
+  Gross margin: 70% (more customer success overhead)
+  How won: retroactive savings analysis → pilot → enterprise contract
+
+Tier 3: Strategic / Sovereign AI Lab
+  Profile: G42, TII, Sber AI, Yandex — own LLM infrastructure
+  ACV: $600K-$2.4M ($50K-$200K/мес)
+  Sales cycle: 180-360 days (government procurement)
+  Churn rate: 5% annual
+  Gross margin: 65% (deep integration, dedicated support)
+  How won: government relationship + sovereign AI narrative</code></pre>
+<h3>2.2. Base scenario: детальный год по году</h3>
+<h4>Year 1 (2026): Pilot phase</h4>
+<pre class=" ascii-art"><code>╔═══════════════════════════════════════════════════════════════════════════╗
+║  YEAR 1 (2026) — BASE SCENARIO                                           ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                          ║
+║  Q3 2026 (Jul-Sep):                                                      ║
+║    New Tier 1 customers:    2  (pilot conversions)                      ║
+║    New Tier 2 customers:    1  (first enterprise)                       ║
+║    New Tier 3 customers:    0                                            ║
+║    Avg ACV:  T1=$3K/мес, T2=$12K/мес                                   ║
+║    ARR end of Q3: 2×$36K + 1×$144K = $216K                             ║
+║                                                                          ║
+║  Q4 2026 (Oct-Dec):                                                      ║
+║    New Tier 1: +1 (converted from retro analysis)                       ║
+║    New Tier 2: +1                                                        ║
+║    ARR end of Q4: 3×$36K + 2×$144K = $396K ≈ $400K                    ║
+║                                                                          ║
+║  Year 1 Metrics:                                                         ║
+║    Total customers EOY:     5                                            ║
+║    ARR EOY:                $400K                                         ║
+║    ARR recognized in Y1:  $150K (only H2 revenue)                      ║
+║    Churn:                   0 (all in first year)                       ║
+║                                                                          ║
+╚═══════════════════════════════════════════════════════════════════════════╝</code></pre>
+<h4>Year 2 (2027): Growth phase</h4>
+<pre class=" ascii-art"><code>╔═══════════════════════════════════════════════════════════════════════════╗
+║  YEAR 2 (2027) — BASE SCENARIO                                           ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                          ║
+║  Starting ARR:    $400K                                                  ║
+║                                                                          ║
+║  New business:                                                           ║
+║    Tier 1 new:    +10  @ $42K ACV avg = $420K ARR new                  ║
+║    Tier 2 new:     +7  @ $180K ACV avg = $1.26M ARR new                ║
+║    Tier 3 new:     +1  @ $720K ACV = $720K ARR new                     ║
+║                                                                          ║
+║  Expansion (existing Tier 1 → Tier 2):                                  ║
+║    2 of 3 Tier 1 customers upsell to T2                                 ║
+║    Upsell ARR:  2 × ($144K - $36K) = $216K                             ║
+║                                                                          ║
+║  Churn:                                                                  ║
+║    Tier 1: 1 churns (15% of 3 = 0.45, round to 0) → $0                 ║
+║    Tier 2: 0 churns (7% × 2 = 0.14, round to 0) → $0                   ║
+║                                                                          ║
+║  Year 2 ARR end:                                                         ║
+║    Starting: $400K + New: $2.4M + Expansion: $216K - Churn: $36K       ║
+║    = $2.98M ≈ $3M ARR                                                   ║
+║                                                                          ║
+║  Year 2 recognized revenue: ($400K + $3M) / 2 = $1.7M                 ║
+║                                                                          ║
+╚═══════════════════════════════════════════════════════════════════════════╝</code></pre>
+<h4>Year 3 (2028): Scale phase</h4>
+<pre class=" ascii-art"><code>╔═══════════════════════════════════════════════════════════════════════════╗
+║  YEAR 3 (2028) — BASE SCENARIO                                           ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                          ║
+║  Starting ARR:    $3M                                                    ║
+║                                                                          ║
+║  New business:                                                           ║
+║    Tier 1 new:  +30  @ $48K ACV = $1.44M                                ║
+║    Tier 2 new:  +20  @ $210K ACV = $4.2M                               ║
+║    Tier 3 new:   +3  @ $900K ACV = $2.7M                               ║
+║                                                                          ║
+║  Expansion:                                                              ║
+║    Tier 1 → T2: 5 customers @ $150K expansion = $750K                  ║
+║    T2 upsell:   3 customers @ $100K expansion = $300K                   ║
+║                                                                          ║
+║  Churn:                                                                  ║
+║    Tier 1: 2 churns @ $42K = -$84K                                      ║
+║    Tier 2: 1 churns @ $180K = -$180K                                    ║
+║    Tier 3: 0 churns                                                      ║
+║                                                                          ║
+║  Year 3 ARR end:                                                         ║
+║    $3M + $8.34M + $1.05M - $264K = $12.1M ≈ $12M ARR                  ║
+║                                                                          ║
+║  Year 3 recognized revenue: ($3M + $12M) / 2 = $7.5M                  ║
+║                                                                          ║
+╚═══════════════════════════════════════════════════════════════════════════╝</code></pre>
+<h3>2.3. Summary revenue table</h3>
+<pre class=" ascii-art"><code>┌────────────────────────────────────────────────────────────────────────────┐
+│  REVENUE SUMMARY (BASE SCENARIO)                                          │
+├──────────────┬──────────┬──────────┬──────────┬──────────┬───────────────┤
+│  Metric      │   Y1     │   Y2     │   Y3     │ Y3 vs Y1 │ Note          │
+├──────────────┼──────────┼──────────┼──────────┼──────────┼───────────────┤
+│ ARR EOY      │ $400K    │ $3M      │ $12M     │   30×    │               │
+│ Recognized   │ $150K    │ $1.7M    │ $7.5M    │   50×    │ avg(start+end)│
+│ Customers    │ 5        │ 25       │ 75       │   15×    │               │
+│  - Tier 1    │ 3        │ 13       │ 38       │          │               │
+│  - Tier 2    │ 2        │ 10       │ 30       │          │               │
+│  - Tier 3    │ 0        │ 2        │ 7        │          │               │
+│ Net Rev Ret. │ n/a      │ 120%+    │ 125%+    │          │ NRR target    │
+│ Gross Margin │ 72%      │ 70%      │ 70%      │          │               │
+└────────────────────────────────────────────────────────────────────────────┘</code></pre>
+<hr>
+<h2>III. Unit economics</h2>
+<h3>3.1. ARPU по тирам</h3>
+<pre class="hljs"><code class="hljs language-bash">                    Year 1    Year 2    Year 3
+                  ─────────  ────────  ────────
+Tier 1 ARPU/year  <span class="hljs-variable">$36K</span>      <span class="hljs-variable">$42K</span>      <span class="hljs-variable">$48K</span>     (+14% price increase)
+Tier 2 ARPU/year  <span class="hljs-variable">$144K</span>     <span class="hljs-variable">$180K</span>     <span class="hljs-variable">$210K</span>    (+20% upsell)
+Tier 3 ARPU/year  n/a       <span class="hljs-variable">$720K</span>     <span class="hljs-variable">$900K</span>    (+25% expansion)
+
+Blended ARPU:     <span class="hljs-variable">$80K</span>      <span class="hljs-variable">$120K</span>     <span class="hljs-variable">$160K</span></code></pre>
+<h3>3.2. Customer Acquisition Cost (CAC)</h3>
+<pre class="hljs"><code class="hljs language-apache"><span class="hljs-attribute">CAC</span> Calculation:
+  <span class="hljs-attribute">Sales</span> &amp; Marketing spend / новые customers в период
+
+<span class="hljs-attribute">Year</span> <span class="hljs-number">1</span> (founder-led sales, minimal spend):
+  <span class="hljs-attribute">S</span>&amp;M spend:         $<span class="hljs-number">120</span>K (founder time + events + tools)
+  <span class="hljs-attribute">New</span> customers:     <span class="hljs-number">5</span>
+  <span class="hljs-attribute">CAC</span>:               $<span class="hljs-number">24</span>K
+  
+<span class="hljs-attribute">Year</span> <span class="hljs-number">2</span> (first GTM hire + SDRs):
+  <span class="hljs-attribute">S</span>&amp;M spend:         $<span class="hljs-number">600</span>K
+  <span class="hljs-attribute">New</span> customers:     <span class="hljs-number">20</span>
+  <span class="hljs-attribute">CAC</span>:               $<span class="hljs-number">30</span>K
+
+<span class="hljs-attribute">Year</span> <span class="hljs-number">3</span> (full GTM team):
+  <span class="hljs-attribute">S</span>&amp;M spend:         $<span class="hljs-number">1</span>.<span class="hljs-number">8</span>M
+  <span class="hljs-attribute">New</span> customers:     <span class="hljs-number">53</span>
+  <span class="hljs-attribute">CAC</span>:               $<span class="hljs-number">34</span>K
+
+<span class="hljs-attribute">Blended</span> CAC payback period (at Gross Margin <span class="hljs-number">70</span>%):
+  <span class="hljs-attribute">Year</span> <span class="hljs-number">2</span>: CAC $<span class="hljs-number">30</span>K / (ARPU $<span class="hljs-number">120</span>K × <span class="hljs-number">70</span>%) = <span class="hljs-number">4</span>.<span class="hljs-number">3</span> months ✓ (target &lt;<span class="hljs-number">12</span> months)
+  <span class="hljs-attribute">Year</span> <span class="hljs-number">3</span>: CAC $<span class="hljs-number">34</span>K / (ARPU $<span class="hljs-number">160</span>K × <span class="hljs-number">70</span>%) = <span class="hljs-number">3</span>.<span class="hljs-number">6</span> months ✓</code></pre>
+<h3>3.3. LTV (Life Time Value)</h3>
+<pre class="hljs"><code class="hljs language-erlang">LTV = ARPU × Gross Margin / Annual Churn Rate
+
+По тирам:
+  Tier <span class="hljs-number">1</span>:  <span class="hljs-string">$4</span>2K × <span class="hljs-number">0.75</span> / <span class="hljs-number">0.15</span> = <span class="hljs-string">$2</span>10K LTV
+  Tier <span class="hljs-number">2</span>:  <span class="hljs-string">$1</span>80K × <span class="hljs-number">0.70</span> / <span class="hljs-number">0.07</span> = <span class="hljs-string">$1</span>.<span class="hljs-number">8</span>M LTV
+  Tier <span class="hljs-number">3</span>:  <span class="hljs-string">$7</span>20K × <span class="hljs-number">0.65</span> / <span class="hljs-number">0.05</span> = <span class="hljs-string">$9</span>.<span class="hljs-number">4</span>M LTV
+  
+LTV:CAC ratio:
+  Tier <span class="hljs-number">1</span>:  <span class="hljs-string">$2</span>10K / <span class="hljs-string">$3</span>0K = <span class="hljs-number">7</span>:<span class="hljs-number">1</span>  ✓ (target &gt;<span class="hljs-number">3</span>:<span class="hljs-number">1</span>)
+  Tier <span class="hljs-number">2</span>:  <span class="hljs-string">$1</span>.<span class="hljs-number">8</span>M / <span class="hljs-string">$3</span>0K = <span class="hljs-number">60</span>:<span class="hljs-number">1</span> ✓
+  Tier <span class="hljs-number">3</span>:  <span class="hljs-string">$9</span>.<span class="hljs-number">4</span>M / <span class="hljs-string">$3</span>0K = <span class="hljs-number">313</span>:<span class="hljs-number">1</span> ✓
+
+Conclusion: unit economics very strong, especially for Tier <span class="hljs-number">2</span>+.
+            Tier <span class="hljs-number">1</span> viable but less efficient; serves as top-<span class="hljs-keyword">of</span>-funnel.</code></pre>
+<h3>3.4. Gross margin waterfall</h3>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">Revenue</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$100</span>
+
+  <span class="hljs-attribute">Less</span><span class="hljs-punctuation">:</span> <span class="hljs-string">COGS</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">Storage (S3 + CDN):                          -$3.50</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">Validator compute (Tier 2 validations):       -$5.20</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">Audit log retention (S3 Glacier, 7yr):        -$1.80</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">Customer Success (0.25 FTE / $10K customer):  -$16.50</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">Infra engineering (15% of infra cost):         -$3.00</span>
+    <span class="hljs-attribute">─────────────────────────────────────────────────────
+  Total COGS</span><span class="hljs-punctuation">:</span> <span class="hljs-string">                                      -$30.00</span>
+
+  <span class="hljs-attribute">Gross Profit</span><span class="hljs-punctuation">:</span> <span class="hljs-string">                                    $70.00</span>
+  <span class="hljs-attribute">Gross Margin</span><span class="hljs-punctuation">:</span> <span class="hljs-string">                                      70%</span>
+
+<span class="hljs-attribute">Notes</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Customer Success cost dominates COGS (pure software companies target &lt;10%)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Reduces as automation increases (→ 75%+ at scale)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Infrastructure cost is low and predictable</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">No physical goods, licensing, or third-party royalties</span></code></pre>
+<hr>
+<h2>IV. Operating expenses</h2>
+<h3>4.1. Team plan (headcount by year)</h3>
+<pre class=" ascii-art"><code>╔═══════════════════════════════════════════════════════════════════════════╗
+║  HEADCOUNT PLAN                                                          ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                          ║
+║  Year 1 (2026):                                                          ║
+║    CEO/Founder (founder, not on payroll until funding):   1.0 FTE $0    ║
+║    GTM Lead (hire Q4 2026 post-close):                    1.0 FTE $80K  ║
+║    Sr. Infra Engineer (hire Q4 2026):                     1.0 FTE $90K  ║
+║    ─────────────────────────────────────────────────────────────         ║
+║    Total hired Y1:    2 FTE (H2 only)                                   ║
+║    Y1 payroll cost:   $85K (½-year × 2 people)                          ║
+║                                                                          ║
+║  Year 2 (2027):                                                          ║
+║    + Research Lead (zkML / canonical hashing):            1.0 FTE $100K ║
+║    + Crypto/Security Engineer:                            1.0 FTE $95K  ║
+║    + Customer Success Manager:                            1.0 FTE $70K  ║
+║    + 2nd Sales/BDR (MENA focus):                          1.0 FTE $65K  ║
+║    ─────────────────────────────────────────────────────────────         ║
+║    Total team Y2:     8 FTE (including Y1 + founder)                    ║
+║    Y2 payroll cost:   $570K (annualized)                                 ║
+║                                                                          ║
+║  Year 3 (2028):                                                          ║
+║    + 3 more engineers (MCP, validator, storage):          3.0 FTE $300K ║
+║    + 2 more AEs (Account Executives):                     2.0 FTE $200K ║
+║    + VP Engineering (fractional → full):                  1.0 FTE $150K ║
+║    + Legal / Finance (contractor → FTE):                  1.0 FTE $90K  ║
+║    ─────────────────────────────────────────────────────────────         ║
+║    Total team Y3:    15 FTE                                              ║
+║    Y3 payroll cost:  $1.31M (annualized)                                 ║
+║                                                                          ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+Geographic arbitrage note:
+  Engineering hires: Russia/Kazakhstan/Ukraine → ~50-60% of US equivalent
+  Sales hires: UAE/MENA → 20-30% premium over US for senior enterprise sales
+  Effective payroll blended discount: ~20% vs SF-equivalent team</code></pre>
+<h3>4.2. OpEx waterfall</h3>
+<pre class=" ascii-art"><code>┌────────────────────────────────────────────────────────────────────────────┐
+│  OPEX BREAKDOWN (BASE SCENARIO)                          ($K)             │
+├──────────────────────────────┬────────────┬────────────┬──────────────────┤
+│  Category                    │   Year 1   │   Year 2   │   Year 3         │
+├──────────────────────────────┼────────────┼────────────┼──────────────────┤
+│  Payroll (engineering)       │    85K     │   285K     │   640K           │
+│  Payroll (sales/CS)          │    45K     │   285K     │   670K           │
+│  Founder salary              │     0K     │   120K     │   180K           │
+│  Total Payroll               │   130K     │   690K     │  1,490K          │
+├──────────────────────────────┼────────────┼────────────┼──────────────────┤
+│  Cloud infrastructure        │    24K     │    72K     │   240K           │
+│  SaaS tools (dev/ops)        │    18K     │    36K     │    72K           │
+│  Validator compute           │     6K     │    48K     │   180K           │
+│  Total Infrastructure        │    48K     │   156K     │   492K           │
+├──────────────────────────────┼────────────┼────────────┼──────────────────┤
+│  Sales &amp; Marketing           │    75K     │   420K     │  1,320K          │
+│  (events, ads, content)      │            │            │                  │
+├──────────────────────────────┼────────────┼────────────┼──────────────────┤
+│  R&amp;D / Research grants       │    30K     │    90K     │   180K           │
+│  (experiments, zkML POC)     │            │            │                  │
+├──────────────────────────────┼────────────┼────────────┼──────────────────┤
+│  G&amp;A (legal, accounting,     │    40K     │    90K     │   150K           │
+│  compliance, insurance)      │            │            │                  │
+├──────────────────────────────┴────────────┴────────────┴──────────────────┤
+│  TOTAL OPEX (excl. COGS)                                                  │
+│                              │   323K     │  1,446K    │  3,632K          │
+└──────────────────────────────┴────────────┴────────────┴──────────────────┘</code></pre>
+<h3>4.3. P&amp;L summary (base scenario)</h3>
+<pre class=" ascii-art"><code>┌────────────────────────────────────────────────────────────────────────────┐
+│  P&amp;L SUMMARY                              Year 1    Year 2    Year 3      │
+├──────────────────────────────────────────────────────────────────────────  │
+│  Revenue (recognized)                     $150K     $1.7M     $7.5M      │
+│  COGS                                     -$42K    -$510K   -$2.25M      │
+│  ─────────────────────────────────────────────────────────────────────     │
+│  Gross Profit                              $108K    $1.19M    $5.25M      │
+│  Gross Margin %                             72%       70%       70%       │
+│  ─────────────────────────────────────────────────────────────────────     │
+│  Payroll (non-COGS)                        -$130K   -$690K   -$1.49M     │
+│  Sales &amp; Marketing                          -$75K   -$420K   -$1.32M     │
+│  Infrastructure (non-COGS)                  -$24K    -$72K    -$240K     │
+│  R&amp;D                                        -$30K    -$90K    -$180K     │
+│  G&amp;A                                        -$40K    -$90K    -$150K     │
+│  ─────────────────────────────────────────────────────────────────────     │
+│  Operating Income (EBIT)                  -$191K   -$162K    $1.87M      │
+│  EBIT Margin                              -127%      -10%     +24.9%     │
+│  ─────────────────────────────────────────────────────────────────────     │
+│  Funded by (pre-seed):                    +$700K                          │
+│  Funded by (seed):                                 +$4M                   │
+│  ─────────────────────────────────────────────────────────────────────     │
+│  Cash position EOY                        +$458K  +$4.3M*   +$6.2M*     │
+│  (* after seed round close Q1 2027)                                       │
+└────────────────────────────────────────────────────────────────────────────┘
+
+Key milestones:
+  EBITDA breakeven: Q3 2028 (mid-Year 3)
+  First profitable quarter: Q4 2027 (on Gross Profit basis Q2 2027)</code></pre>
+<hr>
+<h2>V. Capital efficiency и runway</h2>
+<h3>5.1. Quarterly cash runway</h3>
+<pre class=" ascii-art"><code>Assuming pre-seed closes Q4 2026 for $700K:
+
+Q3 2026 (pre-funding):
+  Revenue:       $0 (pilots not yet converted)
+  Burn:         -$30K/мес (founder only, minimal ops)
+  Cash:         Personal + angel bridge
+
+Q4 2026 (post-funding):
+  Starting cash: $700K
+  Monthly burn:  -$55K/мес (2 hires + infra)
+  Revenue:       +$8K/мес (first converted pilots)
+  Net burn:      -$47K/мес
+  Runway:        $700K / $47K = 14.9 months → into Q1 2028
+
+With Seed ($4M) closing Q1 2027:
+  Starting cash: ~$560K + $4M = $4.56M
+  Monthly burn Y2: -$160K/мес
+  Monthly revenue Y2 avg: +$100K/мес
+  Net burn Y2: -$60K/мес
+  Runway from Q1 2027: $4.56M / $60K = 76 months → well into 2033
+
+Cash runway by quarter (base scenario):
+┌──────────────────────────────────────────────────────────────────┐
+│  Q4'26  ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▱▱▱▱▱  $560K  (post pre-seed)           │
+│  Q1'27  ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰  $4.5M  (post seed)              │
+│  Q2'27  ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰  $4.3M                            │
+│  Q3'27  ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▱  $4.1M                            │
+│  Q4'27  ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▱▱  $3.8M  (nearing cashflow pos.)  │
+│  Q1'28  ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▱▱▱  $3.9M  (revenue accelerating)   │
+│  Q2'28  ▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▱▱  $4.2M  (EBITDA positive)        │
+└──────────────────────────────────────────────────────────────────┘</code></pre>
+<h3>5.2. Capital efficiency metrics</h3>
+<pre class="hljs"><code class="hljs language-apache"><span class="hljs-attribute">Rule</span> of <span class="hljs-number">40</span>: (Revenue Growth % + EBITDA Margin %)
+  <span class="hljs-attribute">Y2</span>:  ARR growth <span class="hljs-number">650</span>% - EBITDA margin <span class="hljs-number">10</span>% = <span class="hljs-number">640</span>  ✓✓✓ (&gt;<span class="hljs-number">40</span> = healthy)
+  <span class="hljs-attribute">Y3</span>:  ARR growth <span class="hljs-number">300</span>% + EBITDA margin <span class="hljs-number">25</span>% = <span class="hljs-number">325</span>  ✓✓✓
+
+<span class="hljs-attribute">Burn</span> Multiple: Net Burn / Net New ARR
+  <span class="hljs-attribute">Y1</span>:  $<span class="hljs-number">191</span>K / $<span class="hljs-number">400</span>K = <span class="hljs-number">0</span>.<span class="hljs-number">48</span>x  ✓✓✓ (target &lt;<span class="hljs-number">1</span>.<span class="hljs-number">5</span>x)
+  <span class="hljs-attribute">Y2</span>:  $<span class="hljs-number">162</span>K / $<span class="hljs-number">2</span>.<span class="hljs-number">6</span>M = <span class="hljs-number">0</span>.<span class="hljs-number">06</span>x  ✓✓✓ (exceptional efficiency)
+  <span class="hljs-attribute">Y3</span>:  cash positive          ✓✓✓
+
+<span class="hljs-attribute">Revenue</span> Per Employee:
+  <span class="hljs-attribute">Y1</span>:  $<span class="hljs-number">150</span>K / <span class="hljs-number">3</span> = $<span class="hljs-number">50</span>K/emp  (early stage, expected)
+  <span class="hljs-attribute">Y2</span>:  $<span class="hljs-number">1</span>.<span class="hljs-number">7</span>M / <span class="hljs-number">8</span> = $<span class="hljs-number">212</span>K/emp ✓ (healthy SaaS)
+  <span class="hljs-attribute">Y3</span>:  $<span class="hljs-number">7</span>.<span class="hljs-number">5</span>M / <span class="hljs-number">15</span> = $<span class="hljs-number">500</span>K/emp ✓✓ (excellent, approaching Snowflake levels)</code></pre>
+<hr>
+<h2>VI. Sensitivity analysis: три сценария</h2>
+<h3>6.1. Bear case: медленная адопция, конкурентное давление</h3>
+<pre class="hljs"><code class="hljs language-erlang">Bear Case Assumptions:
+  - Competitor (Anthropic internal team) releases similar product Q4 <span class="hljs-number">2026</span>
+  - Pilot conversion rate <span class="hljs-number">40</span><span class="hljs-comment">% (vs 80% base)</span>
+  - Churn <span class="hljs-number">25</span><span class="hljs-comment">% annual for Tier 1, 15% for Tier 2</span>
+  - Sales cycles extend: +<span class="hljs-number">60</span> days each tier
+  - Pricing pressure: -<span class="hljs-number">30</span><span class="hljs-comment">% on ACV due to competition</span>
+
+Bear Case Results:
+  Y1 ARR:   <span class="hljs-string">$1</span>00K (<span class="hljs-number">2</span> customers)
+  Y2 ARR:   <span class="hljs-string">$6</span>00K (<span class="hljs-number">8</span> customers)
+  Y3 ARR:   <span class="hljs-string">$2</span>.<span class="hljs-number">5</span>M (<span class="hljs-number">20</span> customers)
+  
+  Y3 EBITDA: -<span class="hljs-string">$8</span>00K (requires Series A to survive)
+  
+  Mitigation: If competitor emerges → reposition as <span class="hljs-string">&quot;open standard&quot;</span> vs
+              <span class="hljs-string">&quot;proprietary&quot;</span> → gain enterprise trust through openness.
+  
+  Probability: <span class="hljs-number">20</span><span class="hljs-comment">%</span>
+
+Key risk: <span class="hljs-keyword">if</span> Anthropic builds this natively, our value proposition shifts.
+          Thesis: we go CROSS-PROVIDER, Anthropic stays single-provider.
+          Even in bear <span class="hljs-keyword">case</span>, CPP still works as neutral layer.</code></pre>
+<h3>6.2. Base case (primary projection)</h3>
+<p>Детально описан в §§ II-V выше.</p>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">Base Case Assumptions</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">No major competitor for 18 months</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Pilot conversion rate 80%</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">NRR 120%+ (expansion within accounts)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Pricing holds</span>
+
+<span class="hljs-attribute">Probability</span><span class="hljs-punctuation">:</span> <span class="hljs-string">60%</span>
+<span class="hljs-attribute">Y3 ARR</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$12M</span>
+EBITDA positive by Q3 2028</code></pre>
+<h3>6.3. Bull case: viral adoption, enterprise fast-track</h3>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">Bull Case Assumptions</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">EU AI Act enforcement creates regulatory push (Q4 2026)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">HuggingFace integrates CPP validator natively → distribution boost</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">2+ Tier 3 (sovereign AI lab) customers in Y1</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">NRR 140%+ (rapid upsell within accounts)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Pricing power: enterprise tier ACV 2× base</span>
+
+<span class="hljs-attribute">Bull Case Results</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-attribute">Y1 ARR</span><span class="hljs-punctuation">:</span> <span class="hljs-string">  $500K (6 customers, including 1 T3)</span>
+  <span class="hljs-attribute">Y2 ARR</span><span class="hljs-punctuation">:</span> <span class="hljs-string">  $5M   (30 customers)</span>
+  <span class="hljs-attribute">Y3 ARR</span><span class="hljs-punctuation">:</span> <span class="hljs-string">  $30M  (100 customers, including 5 T3)</span>
+  
+  <span class="hljs-attribute">Y3 EBITDA</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$6M (20% margin)</span>
+  
+  <span class="hljs-attribute">Series A timing</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Q1 2027 (pull forward)</span>
+  <span class="hljs-attribute">Series A size</span><span class="hljs-punctuation">:</span> <span class="hljs-string">  $20-25M at $100M+ valuation</span>
+  
+  <span class="hljs-attribute">Probability</span><span class="hljs-punctuation">:</span> <span class="hljs-string">20%</span></code></pre>
+<h3>6.4. Sensitivity table</h3>
+<pre class=" ascii-art"><code>Key variable: Pilot conversion rate (baseline: 80%)
+
+Conv. Rate │  Y1 ARR   │  Y2 ARR   │  Y3 ARR   │  Series A timing
+───────────┼───────────┼───────────┼───────────┼──────────────────
+   40%     │  $100K    │  $700K    │  $2.8M    │  Q2 2027 (delayed)
+   60%     │  $220K    │  $1.5M    │  $7M      │  Q1 2027
+   80%     │  $400K    │  $3M      │  $12M     │  Q1 2027 (base)
+  100%     │  $550K    │  $4.5M    │  $18M     │  Q4 2026 (pull forward)
+
+Key variable: ARPU growth (baseline: 15% annual)
+
+ARPU growth│  Y1 ARR   │  Y2 ARR   │  Y3 ARR
+───────────┼───────────┼───────────┼──────────
+   0%      │  $400K    │  $2.3M    │  $8.5M
+   15%     │  $400K    │  $3M      │  $12M    ← base
+   30%     │  $400K    │  $3.5M    │  $16M
+   50%     │  $400K    │  $4.2M    │  $22M</code></pre>
+<hr>
+<h2>VII. Comparison с public infrastructure companies</h2>
+<h3>7.1. Comparable companies (exit multiples)</h3>
+<pre class=" ascii-art"><code>┌────────────────────────────────────────────────────────────────────────────┐
+│  PUBLIC INFRA COMPARABLES (as of 2025-2026 market)                        │
+├──────────────┬─────────────┬──────────────┬─────────────┬─────────────────┤
+│  Company     │  ARR at IPO │  IPO Valuation│  EV/ARR     │  Model          │
+├──────────────┼─────────────┼──────────────┼─────────────┼─────────────────┤
+│  Datadog     │  $100M      │  $780M       │  7.8×       │  Usage-based    │
+│  (2019)      │             │              │             │  SaaS infra     │
+├──────────────┼─────────────┼──────────────┼─────────────┼─────────────────┤
+│  Snowflake   │  $600M      │  $33B        │  55×        │  Consumption    │
+│  (2020)      │             │              │             │  data platform  │
+├──────────────┼─────────────┼──────────────┼─────────────┼─────────────────┤
+│  HashiCorp   │  $320M      │  $3.1B       │  9.7×       │  Open-core      │
+│  (2021)      │             │              │             │  infra tools    │
+├──────────────┼─────────────┼──────────────┼─────────────┼─────────────────┤
+│  Grafana Labs│  $200M+     │  $6B         │  30×        │  Open-source    │
+│  (private)   │             │              │             │  observability  │
+├──────────────┼─────────────┼──────────────┼─────────────┼─────────────────┤
+│  Stripe      │  $1B+       │  $95B peak   │  ~95×       │  Protocol       │
+│  (private)   │             │              │             │  infrastructure │
+└──────────────┴─────────────┴──────────────┴─────────────┴─────────────────┘
+
+CPP positioning:
+  Closest analogy: HashiCorp (open-core, infrastructure, developer-first)
+  Upside analogy:  Stripe (protocol layer, network effects)
+  
+  Conservative (HashiCorp multiple, 10× ARR):
+    Y3 ARR $12M × 10 = $120M valuation (Series A milestone)
+    
+  Moderate (Datadog multiple, 15× ARR):
+    Y3 ARR $12M × 15 = $180M valuation
+    
+  Optimistic (Snowflake-like if protocol wins, 40× ARR):
+    Y3 ARR $12M × 40 = $480M valuation (if canonical standard established)</code></pre>
+<h3>7.2. Exit scenarios</h3>
+<pre class="hljs"><code class="hljs language-nix">Acqui-hire <span class="hljs-symbol">/</span> Strategic acquisition <span class="hljs-params">scenarios:</span>
+
+  Scenario <span class="hljs-params">A:</span> Anthropic acquires CPP (<span class="hljs-number">202</span>8-<span class="hljs-number">2029</span>)
+    <span class="hljs-params">Rationale:</span> integrate canonical encoding natively
+    <span class="hljs-params">Price:</span> <span class="hljs-number">1</span>5-<span class="hljs-number">25</span>× ARR <span class="hljs-operator">=</span> $<span class="hljs-number">180</span>M <span class="hljs-operator">-</span> $<span class="hljs-number">300</span>M
+    Strategic <span class="hljs-params">value:</span> eliminates competitor <span class="hljs-operator">+</span> gets protocol <span class="hljs-operator">+</span> team
+    
+  Scenario <span class="hljs-params">B:</span> HuggingFace acquires CPP
+    <span class="hljs-params">Rationale:</span> add canonical infrastructure to their platform
+    <span class="hljs-params">Price:</span> <span class="hljs-number">2</span>0-<span class="hljs-number">30</span>× ARR <span class="hljs-operator">=</span> $<span class="hljs-number">240</span>M <span class="hljs-operator">-</span> $<span class="hljs-number">360</span>M
+    Strategic <span class="hljs-params">value:</span> complements their model hosting <span class="hljs-keyword">with</span> context management
+    
+  Scenario <span class="hljs-params">C:</span> AWS <span class="hljs-symbol">/</span> GCP <span class="hljs-symbol">/</span> Azure acquires CPP
+    <span class="hljs-params">Rationale:</span> differentiated cloud service for LLM enterprise customers
+    <span class="hljs-params">Price:</span> <span class="hljs-number">3</span>0-<span class="hljs-number">50</span>× ARR <span class="hljs-operator">=</span> $<span class="hljs-number">360</span>M <span class="hljs-operator">-</span> $<span class="hljs-number">600</span>M
+    Strategic <span class="hljs-params">value:</span> sticky enterprise contract mechanism
+    
+  Scenario <span class="hljs-params">D:</span> IPO (<span class="hljs-number">2030</span><span class="hljs-operator">+</span>)
+    <span class="hljs-params">Requires:</span> ARR <span class="hljs-operator">&gt;</span> $<span class="hljs-number">50</span>M, NRR <span class="hljs-operator">&gt;</span> <span class="hljs-number">120</span>%, clear path to $<span class="hljs-number">500</span>M ARR
+    <span class="hljs-params">Timeline:</span> <span class="hljs-keyword">if</span> bull scenario plays out
+    <span class="hljs-params">Valuation:</span> <span class="hljs-number">20</span>× ARR <span class="hljs-operator">=</span> $<span class="hljs-number">1</span>B<span class="hljs-operator">+</span></code></pre>
+<hr>
+<h2>VIII. KPI Dashboard для board reporting</h2>
+<h3>8.1. Ключевые метрики</h3>
+<pre class=" ascii-art"><code>╔═══════════════════════════════════════════════════════════════════════════╗
+║  CPP BOARD DASHBOARD — MONTHLY UPDATE                                    ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                          ║
+║  GROWTH                                                                  ║
+║  ARR:         $______  │  MoM growth: ______%  │  vs plan: ______%     ║
+║  Customers:   ______   │  New this month: ____  │  Churn: ______        ║
+║  Pipeline:    $______  (weighted)                                        ║
+║                                                                          ║
+║  RETENTION                                                               ║
+║  NRR (trailing 12m):  ______%  (target: &gt;115%)                          ║
+║  Gross Churn:          ______%  (target: &lt;8%)                            ║
+║  Expansion Revenue:   $______  (upsells + tier upgrades)                ║
+║                                                                          ║
+║  UNIT ECONOMICS                                                          ║
+║  Gross Margin:         ______%  (target: 70%)                            ║
+║  CAC Payback:         ______ months  (target: &lt;12)                      ║
+║  LTV:CAC ratio:        ______×  (target: &gt;5×)                            ║
+║                                                                          ║
+║  CASH                                                                    ║
+║  Cash on hand:         $______                                           ║
+║  Net burn:             $______/мес                                       ║
+║  Runway:              ______ months                                      ║
+║                                                                          ║
+║  PRODUCT / TECHNICAL                                                     ║
+║  CIDs stored (total):  ______  (platform scale)                         ║
+║  Validations/day:      ______                                            ║
+║  Uptime (30d):         ______%  (target: 99.9%)                         ║
+║  Cache hit rate avg:   ______%  (client-side metric)                    ║
+║                                                                          ║
+║  GTM / PIPELINE                                                          ║
+║  Retro analyses:       ______  (pipeline indicator)                     ║
+║  Demo calls:           ______/мес                                        ║
+║  LOIs pending:         ______                                            ║
+║  VC conversations:     ______  (fundraising track)                      ║
+║                                                                          ║
+╚═══════════════════════════════════════════════════════════════════════════╝</code></pre>
+<h3>8.2. Leading indicators (сигналы в воронке)</h3>
+<pre class="hljs"><code class="hljs language-excel"><span class="hljs-built_in">Product</span>-led <span class="hljs-built_in">growth</span> <span class="hljs-built_in">sign</span><span class="hljs-symbol">al:</span>
+  ├── cpp-cli analyze downloads/мес
+  ├── GitHub stars velocity (cpp-core)
+  └── OSS contributor <span class="hljs-built_in">count</span>
+
+Sales pipeline <span class="hljs-built_in">sign</span><span class="hljs-symbol">al:</span>
+  ├── Retro analyses completed (лагающий, но точный)
+  ├── Shadow deployments active
+  └── <span class="hljs-built_in">Days</span> to <span class="hljs-built_in">convert</span> (retro → LOI → contract)
+
+Market <span class="hljs-built_in">sign</span><span class="hljs-symbol">al:</span>
+  ├── NRR <span class="hljs-built_in">trend</span> (лучший indicator <span class="hljs-built_in">product</span>-market fit)
+  ├── Tier <span class="hljs-number">1</span> → Tier <span class="hljs-number">2</span> upgrade <span class="hljs-built_in">rate</span>
+  └── Inbound requests (% of new pipeline vs outbound)</code></pre>
+<h3>8.3. Investment timing по milestones</h3>
+<pre class=" ascii-art"><code>╭──────────────────────────────────────────────────────────────────────────╮
+│  CAPITAL + MILESTONES ALIGNMENT                                         │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Pre-seed ($700K) — Q4 2026                                             │
+│  Milestone unlock:                                                       │
+│    ✅ Anthropic cache alignment experiment results published              │
+│    ✅ 2+ pilot contracts signed (LOI acceptable)                         │
+│    ✅ Reference implementation v1.0.0 stable                             │
+│    ✅ 2 FTE hired                                                        │
+│                                                                          │
+│  Seed ($3-5M) — Q1 2027                                                 │
+│  Milestone unlock:                                                       │
+│    ✅ $250K ARR (3+ paying customers)                                    │
+│    ✅ 3 pilots with measurable results (% savings documented)            │
+│    ✅ arXiv preprint published + citations                               │
+│    ✅ NRR &gt; 100% (retention proven)                                      │
+│    ✅ 2nd enterprise customer signed                                     │
+│                                                                          │
+│  Series A ($15-25M) — Q3 2027                                           │
+│  Milestone unlock:                                                       │
+│    ✅ $2M ARR (20+ customers)                                            │
+│    ✅ NRR &gt; 115%                                                         │
+│    ✅ Gross Margin &gt; 65%                                                 │
+│    ✅ Enterprise Tier 2 customers paying &gt;$100K ACV                      │
+│    ✅ Product working in 2+ geographies (US/EU + MENA or CIS)           │
+│    ✅ 1+ industry publication (NeurIPS workshop or similar)              │
+│                                                                          │
+╰──────────────────────────────────────────────────────────────────────────╯</code></pre>
+<hr>
+<h2>IX. Приложение: детальные формулы</h2>
+<h3>Формула оценки token savings (для sales)</h3>
+<pre class="hljs"><code class="hljs language-tap">monthly_savings($) =
+  devs × sessions_per_day × days_per_month × turns_per_session ×
+  context_tokens × repetition_rate × cache_discount ×
+  token_price_per_M / 1_000_000
+
+Например для команды<span class="hljs-number"> 50 </span>devs:
+ <span class="hljs-number"> 50 </span>×<span class="hljs-number"> 25 </span>×<span class="hljs-number"> 22 </span>×<span class="hljs-number"> 8 </span>× 150_000 × 0.70 × 0.90 ×<span class="hljs-number"> 3 </span>/ 1_000_000
+  =<span class="hljs-number"> 50 </span>×<span class="hljs-number"> 25 </span>×<span class="hljs-number"> 22 </span>×<span class="hljs-number"> 8 </span>×<span class="hljs-number"> 150000 </span>× 0.63 ×<span class="hljs-number"> 3 </span>/ 1000000
+  =<span class="hljs-number"> 50 </span>×<span class="hljs-number"> 25 </span>×<span class="hljs-number"> 22 </span>×<span class="hljs-number"> 8 </span>× 283.5
+  =<span class="hljs-number"> 50 </span>×<span class="hljs-number"> 25 </span>×<span class="hljs-number"> 22 </span>× 2268
+  =<span class="hljs-number"> 50 </span>×<span class="hljs-number"> 25 </span>× 49896
+  =<span class="hljs-number"> 50 </span>× 1247400
+  = $62,370,000 ... / 1M (tokens)
+  → $62,370 / мес
+
+Sanity check:<span class="hljs-number"> 50 </span>devs × $1,247 / dev / мес ≈ $15K / мес savings.
+                                                (реалистично для shared codebase)
+
+CPP revenue (20% rev share): $15K × 0.20 = $3,000/мес = $36K ACV ← соответствует Tier 1</code></pre>
+<h3>Формула CAC</h3>
+<pre class="hljs"><code class="hljs language-apache"><span class="hljs-attribute">CAC</span> = (S&amp;M_spend_in_period) / new_customers_in_period
+
+<span class="hljs-attribute">Payback_months</span> = CAC / (ARPU_monthly × gross_margin)
+
+<span class="hljs-attribute">Rule</span> of thumb:
+  <span class="hljs-attribute">Good</span> SaaS: payback &lt; <span class="hljs-number">12</span> months
+  <span class="hljs-attribute">Great</span> SaaS: payback &lt; <span class="hljs-number">6</span> months
+  <span class="hljs-attribute">CPP</span> Y2: $<span class="hljs-number">30</span>K / ($<span class="hljs-number">10</span>K × <span class="hljs-number">0</span>.<span class="hljs-number">70</span>) = <span class="hljs-number">4</span>.<span class="hljs-number">3</span> months → Great</code></pre>
+<h3>Формула NRR</h3>
+<pre class="hljs"><code class="hljs language-apache"><span class="hljs-attribute">NRR</span> = (ARR_start + expansion - contraction - churn) / ARR_start × <span class="hljs-number">100</span>%
+
+<span class="hljs-attribute">Target</span> &gt;<span class="hljs-number">100</span>%: каждый cohort растёт без новых customers.
+<span class="hljs-attribute">Target</span> &gt;<span class="hljs-number">120</span>%: category-leader level (Snowflake = <span class="hljs-number">158</span>% at IPO).
+
+<span class="hljs-attribute">CPP</span> path to <span class="hljs-number">120</span>% NRR:
+  <span class="hljs-attribute">Churn</span> rate: <span class="hljs-number">8</span>% (<span class="hljs-number">1</span> - <span class="hljs-number">0</span>.<span class="hljs-number">08</span> = <span class="hljs-number">0</span>.<span class="hljs-number">92</span> retention)
+  <span class="hljs-attribute">Expansion</span>: +<span class="hljs-number">30</span>% (upsells + tier upgrades)
+  <span class="hljs-attribute">NRR</span>: <span class="hljs-number">0</span>.<span class="hljs-number">92</span> × <span class="hljs-number">1</span>.<span class="hljs-number">30</span> = <span class="hljs-number">1</span>.<span class="hljs-number">20</span> = <span class="hljs-number">120</span>% ✓</code></pre>
+<hr>
+<p><em>Эта финансовая модель обновляется ежеквартально по мере накопления реальных данных.
+Контакт: <a href="mailto:founder@cpp.dev">founder@cpp.dev</a></em></p>
+
+  </div>
+</body>
+</html>

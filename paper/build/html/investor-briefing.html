@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPP — Investor Briefing · Context Provenance Protocol</title>
+  <link rel="stylesheet" href="file:///home/dev/serialization_design/paper/build/styles.css">
+  <style>pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#abb2bf;background:#282c34}.hljs-comment,.hljs-quote{color:#5c6370;font-style:italic}.hljs-doctag,.hljs-formula,.hljs-keyword{color:#c678dd}.hljs-deletion,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-subst{color:#e06c75}.hljs-literal{color:#56b6c2}.hljs-addition,.hljs-attribute,.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#98c379}.hljs-attr,.hljs-number,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-pseudo,.hljs-template-variable,.hljs-type,.hljs-variable{color:#d19a66}.hljs-bullet,.hljs-link,.hljs-meta,.hljs-selector-id,.hljs-symbol,.hljs-title{color:#61aeee}.hljs-built_in,.hljs-class .hljs-title,.hljs-title.class_{color:#e6c07b}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}.hljs-link{text-decoration:underline}</style>
+  <style>
+      @page { @top-center { content: "Investor Briefing"; font-family: system-ui, -apple-system, sans-serif; font-size: 7.5pt; color: #888888; } }
+    </style>
+</head>
+<body class="">
+  <div class="paper">
+    <pre class=" ascii-art"><code>╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║    ██████╗██████╗ ██████╗   Context Provenance Protocol                     ║
+║   ██╔════╝██╔══██╗██╔══██╗  Canonical Infrastructure for AI Economy         ║
+║   ██║     ██████╔╝██████╔╝  ─────────────────────────────────────────────   ║
+║   ╚██████╗██║     ██║        Working paper v0.1 · 2026-05-21                ║
+║    ╚═════╝╚═╝     ╚═╝        github.com/agisota/cpp-core                    ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝</code></pre>
+<p>▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔</p>
+<h2>Питч в трёх предложениях</h2>
+<p>Мы строим канонический протокол для content-addressed сериализации AI-контекста,
+дающий enterprise клиентам <strong>30–70% экономии на LLM input-токенах</strong> и
+криптографически верифицируемый audit trail для regulatory compliance из коробки.
+Глубинная ставка: тот, кто первым канонизирует факты, события и суждения AI-агентов,
+формирует training signal для следующего поколения моделей — и становится
+infrastructure layer уровня TCP/IP в AI-экономике.
+Reference implementation v1.0.0-rc.1 опубликован на GitHub (MIT), 83 теста проходят,
+первые пилоты запускаются в Q3 2026.</p>
+<p>▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔</p>
+<h2>Ключевая метрика</h2>
+<pre class=" ascii-art"><code>╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                              − 7 0 %                                        ║
+║                                                                              ║
+║   экономии на LLM input-токенах для команд с shared-context workflow        ║
+║                                                                              ║
+║   Подтверждено на реальных данных: 687 MB сессий Claude Code,               ║
+║   13 параллельных worktree'ов, 9 из которых несли байт-идентичный            ║
+║   контекст без какого-либо шеринга. 24 multi-agent сессии в мае 2026.       ║
+║                                                                              ║
+║   $236/мес экономии · 1 разработчик · 1 проект                             ║
+║   $283K/год экономии · enterprise 100 разработчиков                         ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝</code></pre>
+<p>▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔</p>
+<h2>Размер рынка</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th align="right">Размер</th>
+<th>Определение</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>TAM</strong></td>
+<td align="right"><strong>$4.8B</strong></td>
+<td>Глобальные расходы корпораций на LLM API (2026)</td>
+</tr>
+<tr>
+<td><strong>SAM</strong></td>
+<td align="right"><strong>$1.2B</strong></td>
+<td>Корпорации &gt;100 сотрудников, использующие LLM в workflow</td>
+</tr>
+<tr>
+<td><strong>SOM</strong></td>
+<td align="right"><strong>$180M</strong></td>
+<td>Компании, для которых CPP даёт ROI &gt;300% в первый год</td>
+</tr>
+</tbody></table>
+<p><em>Числа основаны на публичных данных LLM API pricing и enterprise survey 2025–2026.</em></p>
+<p>▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔</p>
+<h2>Тракшн и roadmap</h2>
+<pre class="hljs"><code class="hljs language-yaml">  <span class="hljs-string">✅</span>  <span class="hljs-string">v1.0.0-rc.1</span> <span class="hljs-string">опубликован</span>   <span class="hljs-string">·</span>  <span class="hljs-number">83</span> <span class="hljs-string">теста</span>  <span class="hljs-string">·</span>  <span class="hljs-string">MIT</span>  <span class="hljs-string">·</span>  <span class="hljs-string">TypeScript</span> <span class="hljs-string">+</span> <span class="hljs-string">Bun</span>
+  <span class="hljs-string">✅</span>  <span class="hljs-string">Full</span> <span class="hljs-string">design</span> <span class="hljs-string">document</span> <span class="hljs-string">(492</span> <span class="hljs-string">строки</span> <span class="hljs-string">спецификации)</span>
+  <span class="hljs-string">✅</span>  <span class="hljs-string">did:key</span> <span class="hljs-string">Ed25519</span> <span class="hljs-string">·</span> <span class="hljs-string">DAG-CBOR</span> <span class="hljs-string">(RFC</span> <span class="hljs-number">8949</span><span class="hljs-string">)</span> <span class="hljs-string">·</span> <span class="hljs-string">CIDv1</span> <span class="hljs-string">(multiformats)</span>
+  <span class="hljs-string">────────────────────────────────────────────────────────────────────────</span>
+  <span class="hljs-string">🟡</span>  <span class="hljs-string">Эксперимент</span> <span class="hljs-attr">1:</span> <span class="hljs-string">cache</span> <span class="hljs-string">alignment</span> <span class="hljs-string">validation</span>        <span class="hljs-string">Q3</span> <span class="hljs-number">2026</span>  <span class="hljs-string">($50</span> <span class="hljs-string">бюджет)</span>
+  <span class="hljs-string">🟡</span>  <span class="hljs-string">Первые</span> <span class="hljs-number">3</span><span class="hljs-string">–5</span> <span class="hljs-string">пилотных</span> <span class="hljs-string">контрактов</span>                  <span class="hljs-string">Q3</span> <span class="hljs-number">2026</span>
+  <span class="hljs-string">🔘</span>  <span class="hljs-string">Pre-seed</span> <span class="hljs-string">закрытие</span>                                <span class="hljs-string">Q4</span> <span class="hljs-number">2026</span>
+  <span class="hljs-string">🔘</span>  <span class="hljs-string">MCP</span> <span class="hljs-string">server</span> <span class="hljs-string">integration</span> <span class="hljs-string">(Sprint</span> <span class="hljs-number">3</span><span class="hljs-string">)</span>               <span class="hljs-string">Q4</span> <span class="hljs-number">2026</span>
+  <span class="hljs-string">🔘</span>  <span class="hljs-string">Polarity</span> <span class="hljs-string">validator</span> <span class="hljs-string">MVP</span>                           <span class="hljs-string">Q2</span> <span class="hljs-number">2027</span>
+  <span class="hljs-string">🔘</span>  <span class="hljs-string">W3C</span> <span class="hljs-string">Community</span> <span class="hljs-string">Group</span> <span class="hljs-string">&quot;Verifiable AI Context&quot;</span>      <span class="hljs-number">2027</span>
+  <span class="hljs-string">🔘</span>  <span class="hljs-string">zkML</span> <span class="hljs-string">proof</span> <span class="hljs-string">prototype</span>                             <span class="hljs-number">2028</span></code></pre>
+<p>▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔</p>
+<h2>Финансовый сценарий (base)</h2>
+<table>
+<thead>
+<tr>
+<th>Год</th>
+<th align="right">ARR</th>
+<th align="right">Клиенты</th>
+<th align="right">Gross Margin</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Y1 (2026)</td>
+<td align="right">$400K</td>
+<td align="right">5</td>
+<td align="right">72%</td>
+</tr>
+<tr>
+<td>Y2 (2027)</td>
+<td align="right">$2M</td>
+<td align="right">18</td>
+<td align="right">74%</td>
+</tr>
+<tr>
+<td>Y3 (2028)</td>
+<td align="right">$12M</td>
+<td align="right">45</td>
+<td align="right">76%</td>
+</tr>
+</tbody></table>
+<p>• Три тира: Developer Teams ($24K–60K ACV), Enterprise ($120K–360K ACV), Sovereign AI Lab ($600K–$2.4M ACV).
+• Exit comparables: Datadog (10× ARR), HashiCorp (12× ARR), Snowflake (15× ARR).
+• Целевой exit: $120–180M при $12M ARR (Y3 bull) или $600M+ при $30M ARR (Y3 bull × 20×).</p>
+<p>▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔</p>
+<h2>Команда минимального запуска</h2>
+<table>
+<thead>
+<tr>
+<th>Роль</th>
+<th align="right">FTE</th>
+<th>Локация</th>
+<th>Статус</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Tech Founder — architecture + protocol</td>
+<td align="right">1.0</td>
+<td>UAE / CIS</td>
+<td>✅ Founder</td>
+</tr>
+<tr>
+<td>Research Lead — canonical hashing + zkML</td>
+<td align="right">0.5</td>
+<td>EU / RU</td>
+<td>🔘 To hire</td>
+</tr>
+<tr>
+<td>GTM Lead — enterprise SaaS</td>
+<td align="right">1.0</td>
+<td>UAE / MENA</td>
+<td>🔘 To hire</td>
+</tr>
+<tr>
+<td>Senior Infra Engineer</td>
+<td align="right">1.0</td>
+<td>RU / KZ</td>
+<td>🔘 To hire</td>
+</tr>
+<tr>
+<td>Crypto / Security Engineer</td>
+<td align="right">0.5</td>
+<td>EU</td>
+<td>🔘 To hire</td>
+</tr>
+<tr>
+<td><strong>Итого</strong></td>
+<td align="right"><strong>4.0</strong></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p>▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔</p>
+<h2>Ключевые риски и митигации</h2>
+<table>
+<thead>
+<tr>
+<th>Риск</th>
+<th align="center">Вероятность</th>
+<th>Митигация</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Anthropic меняет cache-key логику</td>
+<td align="center">Средняя</td>
+<td>1 spec-update; pilot contracts содержат update clause</td>
+</tr>
+<tr>
+<td>Конкурент (Anthropic / OpenAI) опережает</td>
+<td align="center">Низкая</td>
+<td>Open-standard позиционирование; первый мувер — мы</td>
+</tr>
+<tr>
+<td>Hash decay при апгрейде моделей</td>
+<td align="center">Средняя</td>
+<td>Static validator model protocol; versioned checkpoints</td>
+</tr>
+<tr>
+<td>Долгий enterprise sales cycle</td>
+<td align="center">Высокая</td>
+<td>PLG motion + retroactive savings analysis как hook</td>
+</tr>
+</tbody></table>
+<p>▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔</p>
+<h2>Инвестиционный раунд</h2>
+<pre class=" ascii-art"><code>╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║   РАУНД:       Pre-seed                                                     ║
+║   РАЗМЕР:      $500,000 — $1,000,000                                        ║
+║   ЗАКРЫТИЕ:    Q4 2026                                                      ║
+║   RUNWAY:      18 месяцев → Seed round Q2 2028                              ║
+║                                                                              ║
+║   ИСПОЛЬЗОВАНИЕ:                                                            ║
+║   ├── 40%  Найм команды (4 FTE, включая Research + GTM + Infra)             ║
+║   ├── 30%  Первые 5 пилотов (подписание, интеграция, support)               ║
+║   ├── 20%  Empirical validation (эксперименты 1–3, Anthropic кредиты)       ║
+║   └── 10%  Legal + compliance + entity setup (UAE / Delaware)               ║
+║                                                                              ║
+║   ПАРАЛЛЕЛЬНЫЕ ТРЕКИ:                                                       ║
+║   ├── Anthropic Startup Fund + OpenAI Fund                                  ║
+║   ├── 3–5 pilot-контрактов ($50K–$200K pilot revenue)                      ║
+║   └── NSF SBIR / EU Horizon / KAUST research grant ($300K–$2M)              ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝</code></pre>
+<p>▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔</p>
+<h2>Почему именно сейчас — 18-месячное окно</h2>
+<pre class=""><code>  Сейчас (2026)                          +18 месяцев (2027–2028)
+  ─────────────────────────────────────────────────────────────────
+  EU AI Act полностью в силе  ─────────────────────────────────────►
+  Multi-agent adoption взрывной рост  ──────────────────────────────►
+  Frontier labs не опубликовали       ──────────► кто-то опубликует
+  canonical encoding standard                     (Anthropic / OpenAI)
+  ─────────────────────────────────────────────────────────────────
+  CPP: ПЕРВЫЙ публичный open spec     ─► lock-in или опоздание</code></pre>
+<blockquote>
+<p><strong>Тезис:</strong> Winner-take-all в infrastructure выигрывает тот, кто публикует
+open spec + reference implementation первым — до того, как крупные игроки
+решили, что это важно. Прецеденты: Git, Docker, IPFS, HTTP.</p>
+</blockquote>
+<p>▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔</p>
+<pre class=""><code>  ╭──────────────────────────────────────────────────────────────────────╮
+  │  КОНТАКТ                                                             │
+  │                                                                      │
+  │  Email:    founder@cpp.dev                                           │
+  │  GitHub:   github.com/agisota/cpp-core                               │
+  │  Paper:    Working paper v0.1 · полный корпус документов             │
+  │                                                                      │
+  │  Отправить: &quot;CPP Investor&quot; в теме письма для приоритетного ответа.   │
+  ╰──────────────────────────────────────────────────────────────────────╯</code></pre>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPP — Deep Hypothesis · Context Provenance Protocol</title>
+  <link rel="stylesheet" href="file:///home/dev/serialization_design/paper/build/styles.css">
+  <style>pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#abb2bf;background:#282c34}.hljs-comment,.hljs-quote{color:#5c6370;font-style:italic}.hljs-doctag,.hljs-formula,.hljs-keyword{color:#c678dd}.hljs-deletion,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-subst{color:#e06c75}.hljs-literal{color:#56b6c2}.hljs-addition,.hljs-attribute,.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#98c379}.hljs-attr,.hljs-number,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-pseudo,.hljs-template-variable,.hljs-type,.hljs-variable{color:#d19a66}.hljs-bullet,.hljs-link,.hljs-meta,.hljs-selector-id,.hljs-symbol,.hljs-title{color:#61aeee}.hljs-built_in,.hljs-class .hljs-title,.hljs-title.class_{color:#e6c07b}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}.hljs-link{text-decoration:underline}</style>
+  <style>
+      @page { @top-center { content: "Deep Hypothesis"; font-family: system-ui, -apple-system, sans-serif; font-size: 7.5pt; color: #888888; } }
+    </style>
+</head>
+<body class="">
+  <div class="paper">
+    <h1>Глубинная гипотеза: канонические хэши как игротеоретический субстрат</h1>
+<blockquote>
+<p><em>Standalone deep-dive. Предполагает знакомство с §§ I–II и §§ VI–VII основного paper&#39;а.</em>
+<em>Версия 0.1 (2026-05-21)</em></p>
+</blockquote>
+<hr>
+<h2>Введение: две разные игры</h2>
+<p>CPP сегодня продаётся как <strong>утилитарная инфраструктура</strong>: content-addressed
+canonical encoding снижает дублирование токенов, ускоряет TTFT, упрощает
+compliance audit. Это правда — и это важно для первого пилота. Но в этом
+документе речь о чём-то другом.</p>
+<blockquote>
+<p>Тезис: каноническое хэширование контекста — это не оптимизация.
+Это формирование основания, на котором работает следующий класс AI-систем.
+Это substrate для верифицируемых обратных связей между AI-агентами.
+Тот, кто канонизирует факты и суждения первым,
+становится infrastructure layer на уровне TCP/IP или HTTP.</p>
+</blockquote>
+<p>Это разные масштабы игры. Первая игра — B2B SaaS, $1-10M ARR, 3-5 лет.
+Вторая — стандартообразующий слой AI-экономики, потенциально $100M–$1B ARR
+на горизонте 7-10 лет. Настоящий документ — о второй игре.</p>
+<hr>
+<h2>I. Почему «AI верифицирующий AI» требует канонических точек отсчёта</h2>
+<h3>1.1. Проблема верификации AI-суждений</h3>
+<p>Когда модель A говорит «функция f корректна», а модель B говорит «функция f
+некорректна» — кто прав? Сегодня у нас нет формального способа сравнить эти
+суждения, потому что мы не можем гарантировать, что они смотрели на
+<strong>идентичный</strong> контекст.</p>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">Сегодня (без CPP)</span><span class="hljs-punctuation">:
+</span>
+  <span class="hljs-attribute">Агент A</span><span class="hljs-punctuation">:</span> <span class="hljs-string"> &quot;f() is correct&quot;</span>
+  <span class="hljs-attribute">Агент B</span><span class="hljs-punctuation">:</span> <span class="hljs-string"> &quot;f() is incorrect&quot;</span>
+  
+  <span class="hljs-attribute">Мы не знаем</span><span class="hljs-punctuation">:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">Одну ли версию f() они видели?</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">Одни ли тесты?</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">Одну ли спецификацию?</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-string">Было ли f() изменено между запросами?</span>
+    
+  → Невозможно сравнить суждения как объективные.
+  → RLHF / preference learning на таких данных = learning noise.</code></pre>
+<p>Это не теоретическая проблема. Это практический барьер для масштабируемого
+multi-agent AI. Каждый раз, когда мы просим агентов судить о том же контексте —
+мы не можем быть уверены, что они видят одно и то же.</p>
+<h3>1.2. CID как общий язык для суждений</h3>
+<p>Если контекст имеет CID — это изменяет всё:</p>
+<pre class="hljs"><code class="hljs language-nix">С <span class="hljs-params">CPP:</span>
+
+  <span class="hljs-attr">context</span> <span class="hljs-operator">=</span> {codebase_cid, spec_cid, test_suite_cid}
+  
+  Агент <span class="hljs-params">A:</span>  {<span class="hljs-params">context_cid:</span> <span class="hljs-string">&quot;bafyrei...&quot;</span>, <span class="hljs-params">judgment:</span> <span class="hljs-string">&quot;correct&quot;</span>, <span class="hljs-params">confidence:</span> <span class="hljs-number">0.92</span>}
+  Агент <span class="hljs-params">B:</span>  {<span class="hljs-params">context_cid:</span> <span class="hljs-string">&quot;bafyrei...&quot;</span>, <span class="hljs-params">judgment:</span> <span class="hljs-string">&quot;incorrect&quot;</span>, <span class="hljs-params">confidence:</span> <span class="hljs-number">0.78</span>}
+  
+  Теперь мы знаем:
+    ✅ Они смотрели на байт-идентичный контекст
+    ✅ Их разногласие — семантическое, не материальное
+    ✅ Можно провести арбитраж (third validator)
+    ✅ Оба суждения можно записать как training data
+       с cryptographic provenance</code></pre>
+<p>CID не просто оптимизирует кэш. CID создаёт <strong>общее пространство ссылок</strong>,
+в котором AI-агенты могут координировать суждения. Это принципиальное
+отличие от текущего состояния.</p>
+<h3>1.3. Верификация без доверия</h3>
+<p>В классической cryptography — Zero-Knowledge proofs позволяют доказать знание
+без раскрытия. В CPP — <code>context_cid</code> позволяет утверждать «моё суждение
+основано на THIS context» без передачи самого контекста. Это важно для:</p>
+<ul>
+<li><strong>Privacy:</strong> confidential codebase, PII-containing medical records.</li>
+<li><strong>Efficiency:</strong> не пересылать гигабайты, только хэши.</li>
+<li><strong>Auditability:</strong> регулятор может получить CID + факт о суждении и проверить
+без доступа к raw data.</li>
+</ul>
+<pre class=" ascii-art"><code>╭─────────────────────────────────────────────────────────────────────╮
+│                                                                     │
+│  Принцип: AI-суждение верифицируемо тогда и только тогда,           │
+│  когда его контекст имеет стабильный, детерминированный идентификатор. │
+│                                                                     │
+│  CID — это этот идентификатор.                                       │
+│  DAG-CBOR canonical encoding — это способ его получить.              │
+│                                                                     │
+╰─────────────────────────────────────────────────────────────────────╯</code></pre>
+<hr>
+<h2>II. Верифицированные игровые кортежи как training data</h2>
+<h3>2.1. Формальная модель агентного решения</h3>
+<p>Каждое решение AI-агента — это игровой кортеж:</p>
+<pre class="hljs"><code class="hljs language-pf">T = (S_in, A, S_out, R)
+
+где:
+  S_in  ∈ States    — input <span class="hljs-keyword">state</span> (то, что видел агент)
+  A     ∈ Actions   — action (что агент сделал)
+  S_out ∈ States    — output <span class="hljs-keyword">state</span> (результат)
+  R     ∈ ℝ         — reward (downstream observable)</code></pre>
+<p>В классическом reinforcement learning эти кортежи — учебный материал.
+Качество обучения <strong>напрямую зависит</strong> от качества кортежей.</p>
+<h3>2.2. Проблема «грязных» кортежей</h3>
+<p>Сегодня AI labs накапливают RLHF preference data через:</p>
+<ul>
+<li>Human annotations (дорого, не масштабируется, субъективно).</li>
+<li>Constitution-AI self-critique (лучше, но зависит от модели-критика).</li>
+<li>Outcome-based RL (работает для verifiable tasks: math, code).</li>
+</ul>
+<p>Фундаментальная проблема: <strong>контекст не канонизирован</strong>. Один и тот же <code>S_in</code>
+в разных сессиях представлен разными байтами. Это значит:</p>
+<pre class=" ascii-art"><code>Проблема эквивалентности:
+─────────────────────────
+  T₁ = (S_in_variant_1, A₁, S_out₁, R₁)
+  T₂ = (S_in_variant_2, A₂, S_out₂, R₂)
+  
+  Если semantically(S_in_variant_1) = semantically(S_in_variant_2)
+  но bytes(S_in_variant_1) ≠ bytes(S_in_variant_2),
+  
+  то неизвестно: T₁ и T₂ — это одна игровая ситуация или разные?
+  
+  При обучении на таких данных:
+    → Loss function не может правильно generalize
+    → Gradient updates конкурируют за «похожие, но разные» inputs
+    → Обучение медленнее и нестабильнее</code></pre>
+<h3>2.3. CPP-верифицированные кортежи</h3>
+<p>С CPP каждый компонент кортежа получает CID:</p>
+<pre class="hljs"><code class="hljs language-stylus">T_cpp = (S_in_CID, A_CID, S_out_CID, R_signal)
+
+где:
+  S_in_CID  = <span class="hljs-built_in">CID</span>(<span class="hljs-built_in">canonical</span>(context_graph))
+  A_CID     = <span class="hljs-built_in">CID</span>(<span class="hljs-built_in">canonical</span>(CalculationActivity))
+                  ↳ включает: model, params, tool_calls, timestamp
+  S_out_CID = <span class="hljs-built_in">CID</span>(<span class="hljs-built_in">canonical</span>(EffectNode))
+                  ↳ включает: changes, range, confidence, affected_entities
+  R_signal  = downstream observable (signed Outcome-Fact от downstream observer)</code></pre>
+<p>Формальное преимущество:</p>
+<pre class=" ascii-art"><code>╭──────────────────────────────────────────────────────────────────────╮
+│                                                                      │
+│  Лемма: При S_in_CID₁ = S_in_CID₂                                   │
+│         гарантировано bytes(S_in₁) = bytes(S_in₂)                    │
+│                                                                      │
+│  Следствие: два кортежа с одинаковым S_in_CID                        │
+│             безусловно сопоставимы как training samples.              │
+│                                                                      │
+│  Это фундаментальное свойство content-addressing.                    │
+│                                                                      │
+╰──────────────────────────────────────────────────────────────────────╯</code></pre>
+<h3>2.4. Масштаб ценности verified training data</h3>
+<p>Рассмотрим конкретный сценарий: enterprise клиент с 100 разработчиками
+использует CPP 1 год. За год накапливается:</p>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">Оценка накопленных кортежей</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-attribute">100 devs × 30 sessions/day × 250 decisions/session × 250 business days
+  = 187.5M verified game tuples/year
+
+Каждый tuple</span><span class="hljs-punctuation">:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Context CID (верифицируемый)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Action CID (подписанный агентом)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Outcome CID (верифицированный downstream)</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">Reward signal (принято/отклонено/пофиксено разработчиком)</span>
+  
+<span class="hljs-attribute">Это</span><span class="hljs-punctuation">:</span> <span class="hljs-string">187.5M verified training samples</span>
+     с cryptographic provenance
+     за $0 marginal cost (CPP уже развёрнут для cost-saving)</code></pre>
+<p>Для сравнения: весь RLHF dataset Anthropic за 2023-2024 — порядка десятков миллионов
+аннотаций от людей, каждая ценой $0.05-0.20. Эквивалентное количество CPP-верифицированных
+кортежей стоит $0 incremental (если инфраструктура уже развёрнута).</p>
+<hr>
+<h2>III. Архитектура статической модели-валидатора</h2>
+<h3>3.1. Почему нужна статическая модель</h3>
+<p>Главная угроза для hash-based coordination — <strong>модельный дрейф</strong>. Когда Anthropic
+выпускает Claude Opus 5, а OpenAI — GPT-5:</p>
+<ul>
+<li>Семантические embeddings меняются.</li>
+<li>Probability distributions по токенам меняются.</li>
+<li>«Позитивный» ответ Claude Opus 4 может стать «нейтральным» у Opus 5.</li>
+<li>Cached inference results не воспроизводятся.</li>
+</ul>
+<p>Без решения этой проблемы CPP распадается каждые 6-12 месяцев вместе с
+выходом новых моделей.</p>
+<h3>3.2. Концепция заимствована из ZK-rollup</h3>
+<p>В ZK-rollup существует понятие <strong>verifier circuit</strong> — это статически зафиксированная
+схема верификации, которая не меняется при апгрейдах системы. ZK proof
+генерируется против этой схемы. Конечный верификатор может проверить любой
+такой proof, зная только схему.</p>
+<p>Аналогия для CPP:</p>
+<pre class=" ascii-art"><code>ZK-rollup              →  CPP
+────────────────────────────────────────────────────────────────────────
+verifier circuit       →  static validator model
+prover (arbitrary)     →  inference model (any frontier model)
+proof                  →  polarity claim + signature
+verifier               →  any CPP-compliant system
+trusted setup          →  model checkpoint + deterministic runtime</code></pre>
+<h3>3.3. Технические требования к статическому валидатору</h3>
+<pre class=" ascii-art"><code>┌─────────────────────────────────────────────────────────────────────────┐
+│  STATIC CANONICAL VALIDATOR                                             │
+│                                                                         │
+│  Архитектурные требования:                                              │
+│  ├── Frozen weights: один checkpoint, никогда не обновляется            │
+│  ├── Deterministic inference: T=0, single-batch, fixed random seed      │
+│  ├── Bit-reproducible: одинаковый input → идентичный output на любом    │
+│  │   hardware с одинаковым floating-point режимом                       │
+│  ├── Open weights: публично доступен для независимой верификации        │
+│  └── Размер: ≤10B params (для zkML feasibility в 2027-2028)             │
+│                                                                         │
+│  Кандидаты (2026):                                                      │
+│  ├── Llama 3.1 8B Instruct (Meta, Apache 2.0, хорошо изучен)           │
+│  ├── Mistral 7B (Mistral AI, Apache 2.0)                                │
+│  ├── Phi-3 Mini 3.8B (Microsoft, MIT)                                   │
+│  └── Специально обученный distilled validator (оптимально, см. §III.4) │
+│                                                                         │
+│  Hosting (multi-party federation):                                      │
+│  ├── Primary: HuggingFace Dedicated Endpoints                           │
+│  ├── Secondary: Together.ai serverless                                  │
+│  ├── Tertiary: TII compute (UAE)                                        │
+│  └── Emergency: Replicate / Baseten                                     │
+└─────────────────────────────────────────────────────────────────────────┘</code></pre>
+<h3>3.4. Дистилляция валидатора</h3>
+<p>Оптимальный путь — не использовать существующую open-source модель, а
+<strong>дистиллировать специализированный validator</strong> из outputs большой frontier модели:</p>
+<pre class=" ascii-art"><code>Шаг 1: Собрать labeled dataset
+────────────────────────────────
+  100K примеров: {context, claim, true_polarity}
+  Источник polarity labels:
+    - Human annotation (gold standard, 10K примеров)
+    - GPT-4o / Claude Opus ensemble (90K примеров)
+  Баланс классов: 40% positive, 30% neutral, 30% negative
+
+Шаг 2: Дистиллировать validator (1-3B params)
+──────────────────────────────────────────────
+  Teacher: Claude Opus 4 + GPT-4o ensemble
+  Student: Llama 3.2 1B fine-tuned on task
+  Objective: binary/ternary polarity classification + confidence
+  Training: 4xA100, ~8 часов, ~$200
+
+Шаг 3: Зафиксировать checkpoint
+──────────────────────────────────
+  sha256(weights.bin) = 0xdeadbeef...
+  Published: HuggingFace Model Hub
+  Versioned: cpp-validator-v1.0 (NEVER updated, only versioned)
+  
+Шаг 4: Verify determinism
+──────────────────────────
+  Same input on 100 different hardware configs → same output
+  Tolerance: exact match for T=0 greedy decoding</code></pre>
+<hr>
+<h2>IV. Полярная валидация как робастный сигнал</h2>
+<h3>4.1. Почему полярность, а не точное совпадение</h3>
+<p>Попытка использовать точное совпадение байт или точных embedding-векторов
+для cross-model coordination обречена: любое обновление модели меняет оба.
+Полярность (positive / neutral / negative) — значительно более стабильная
+характеристика.</p>
+<pre class="hljs"><code class="hljs language-nix">Иллюстрация стабильности:
+
+  Контекст: <span class="hljs-string">&quot;Функция login() успешно прошла все 47 тестов&quot;</span>
+  
+  Claude Opus <span class="hljs-number">3.5</span>:  <span class="hljs-string">&quot;positive, confidence=0.97&quot;</span>
+  Claude Opus <span class="hljs-number">4</span>:    <span class="hljs-string">&quot;positive, confidence=0.95&quot;</span>    ← полярность совпадает
+  <span class="hljs-params">GPT-4o:</span>           <span class="hljs-string">&quot;positive, confidence=0.94&quot;</span>
+  Llama <span class="hljs-number">3.1</span> <span class="hljs-number">70</span><span class="hljs-params">B:</span>    <span class="hljs-string">&quot;positive, confidence=0.89&quot;</span>
+  
+  Static <span class="hljs-params">validator:</span> <span class="hljs-string">&quot;positive&quot;</span>                     ← anchor point
+  
+  Точный текстовый output у всех разный.
+  Exact embedding cosine <span class="hljs-params">similarity:</span> ~<span class="hljs-number">0.72</span> между разными моделями.
+  Polarity <span class="hljs-params">agreement:</span> <span class="hljs-number">4</span><span class="hljs-symbol">/4</span> <span class="hljs-operator">=</span> <span class="hljs-number">100</span>%.</code></pre>
+<h3>4.2. Формальная модель полярной консенсус-зоны</h3>
+<pre class=" ascii-art"><code>╭──────────────────────────────────────────────────────────────────────╮
+│                                                                      │
+│  Определение: Polarity Zone                                          │
+│                                                                      │
+│  Пусть P : Context × Model → [-1, 1] — polarity score function.     │
+│                                                                      │
+│  Polarity Zone C ⊂ [-1, 1] — это интервал, в котором                │
+│  консенсус N из M валидаторов достигается:                           │
+│                                                                      │
+│     Zone = { z ∈ [-1,1] : |{i : P(ctx, M_i) ∈ zone(z)}| ≥ k }     │
+│                                                                      │
+│  Стандартные зоны CPP:                                               │
+│    POSITIVE_ZONE  =  [+0.3, +1.0]                                   │
+│    NEUTRAL_ZONE   =  [-0.3, +0.3]                                   │
+│    NEGATIVE_ZONE  =  [-1.0, -0.3]                                   │
+│                                                                      │
+│  Consensus threshold: 3-of-5 validators must agree on zone.         │
+│                                                                      │
+╰──────────────────────────────────────────────────────────────────────╯</code></pre>
+<h3>4.3. Stability under model drift</h3>
+<p>Ключевой эмпирический вопрос: насколько стабильны polarity zones при смене
+версий модели?</p>
+<p>Текущие данные из литературы по LLM evaluation:</p>
+<pre class="hljs"><code class="hljs language-mipsasm">Исследования consistency <span class="hljs-keyword">LLM </span>evaluators (<span class="hljs-number">2023</span><span class="hljs-number">-2024</span>):
+
+  Zheng et al. (<span class="hljs-number">2023</span>) <span class="hljs-string">&quot;Judging LLM-as-a-Judge&quot;</span>:
+    GPT<span class="hljs-number">-4</span> как судья показывает <span class="hljs-number">85</span>% agreement с human на <span class="hljs-keyword">binary </span>tasks.
+    При смене промпта на синонимы: <span class="hljs-number">78</span><span class="hljs-number">-83</span>% agreement.
+    
+  <span class="hljs-keyword">Shen </span>et al. (<span class="hljs-number">2023</span>) <span class="hljs-string">&quot;Large Language Model Alignment&quot;</span>:
+    Polarity consistency между GPT<span class="hljs-number">-3</span>.<span class="hljs-number">5</span> и GPT<span class="hljs-number">-4</span>: <span class="hljs-number">89</span>% на sentiment tasks.
+    
+  Implications для CPP:
+    <span class="hljs-keyword">Binary </span>polarity дрейфует медленнее, чем точный текст.
+    Ожидаемый дрейф при major model update: <span class="hljs-number">5</span><span class="hljs-number">-15</span>% <span class="hljs-keyword">binary </span><span class="hljs-keyword">disagreement.
+</span>    При static validator + zone consensus: &lt;<span class="hljs-number">5</span>% zone <span class="hljs-keyword">boundary </span>violations.</code></pre>
+<h3>4.4. Применение в federated multi-party validation</h3>
+<pre class="hljs"><code class="hljs language-nestedtext"><span class="hljs-attribute">Протокол N-of-M polarity consensus</span><span class="hljs-punctuation">:
+</span>
+<span class="hljs-attribute">1. Producer создаёт Effect с CID = bafyrei...
+2. Producer публикует polarity claim</span><span class="hljs-punctuation">:</span>
+   <span class="hljs-attribute">{ effect_cid</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;bafyrei...&quot;, claimed_zone: &quot;POSITIVE&quot;, confidence: 0.93 }</span>
+
+<span class="hljs-attribute">3. N validators (из M zарегистрированных) независимо</span><span class="hljs-punctuation">:</span>
+   <span class="hljs-attribute">a. Resolv effect_cid → получают bytes
+   b. Запускают static validator на bytes
+   c. Подписывают</span><span class="hljs-punctuation">:</span> <span class="hljs-string">{ validator_did, effect_cid, zone, score, timestamp }</span>
+
+<span class="hljs-attribute">4. CPP aggregator собирает signatures, проверяет k-of-N agreement.
+5. Если agreement ≥ threshold → выдаёт ConsensusAttestation(effect_cid, zone).
+
+6. ConsensusAttestation можно</span><span class="hljs-punctuation">:</span>
+   <span class="hljs-bullet">-</span> <span class="hljs-string">Включать в training data как reward signal</span>
+   <span class="hljs-bullet">-</span> <span class="hljs-string">Использовать как compliance audit evidence</span>
+   <span class="hljs-bullet">-</span> <span class="hljs-string">Передавать downstream consumers без raw content</span></code></pre>
+<hr>
+<h2>V. Параллель с ZK-rollup: экономика и инфраструктура</h2>
+<h3>5.1. Структурная аналогия</h3>
+<pre class=" ascii-art"><code>┌─────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│  ZK-ROLLUP                    →  CPP POLARITY CONSENSUS             │
+│  ─────────────────────────────────────────────────────────────────  │
+│  L1 blockchain (Ethereum)     →  CPP Protocol                       │
+│  L2 transaction batch         →  CalculationActivity batch          │
+│  ZK proof generation          →  Polarity claim generation          │
+│  ZK proof verification        →  ConsensusAttestation verification  │
+│  Verifier contract (static)   →  Static validator model             │
+│  Sequencer                    →  CPP aggregator service             │
+│  Data availability layer      →  IPFS / S3 CID storage              │
+│  Economic finality            →  Polarity finality                  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘</code></pre>
+<h3>5.2. Экономическая модель нодов-валидаторов</h3>
+<p>В ZK-rollup нодам платят за verification; в PoS платят за staking. В CPP
+можно применить аналогичную модель:</p>
+<pre class="hljs"><code class="hljs language-nix">Validator <span class="hljs-params">Economics:</span>
+
+  Затраты ноды:
+    GPU <span class="hljs-params">inference:</span> $<span class="hljs-number">0.000167</span> <span class="hljs-symbol">/</span> claim  (Llama <span class="hljs-number">3.2</span> <span class="hljs-number">1</span>B, A100 spot)
+    Storage (CID cache): ~$<span class="hljs-number">0.001</span> <span class="hljs-symbol">/</span> GB <span class="hljs-symbol">/</span> месяц
+    <span class="hljs-params">Bandwidth:</span> ~$<span class="hljs-number">0.009</span> <span class="hljs-symbol">/</span> GB transfer
+    
+  Доходы ноды (при CPP protocol fees):
+    Base <span class="hljs-params">fee:</span> $<span class="hljs-number">0.001</span> <span class="hljs-symbol">/</span> validated claim
+    Performance bonus (быстрый ответ): <span class="hljs-operator">+</span>$<span class="hljs-number">0.0003</span> <span class="hljs-symbol">/</span> claim
+    Reputation stake <span class="hljs-params">yield:</span> <span class="hljs-number">5</span>% annual on locked CPP tokens
+    
+  Margin для validator <span class="hljs-params">node:</span> ~$<span class="hljs-number">0.0007</span> <span class="hljs-symbol">/</span> claim <span class="hljs-operator">=</span> <span class="hljs-number">70</span>% gross margin
+  
+  При <span class="hljs-number">10</span>M claims<span class="hljs-symbol">/day</span> у <span class="hljs-params">network:</span>
+    Total network <span class="hljs-params">revenue:</span> $<span class="hljs-number">10</span>,<span class="hljs-number">000</span><span class="hljs-symbol">/day</span>
+    Распределяется между validators по stake weight</code></pre>
+<h3>5.3. CPP Token (опционально, post-MVP)</h3>
+<p>На длинном горизонте CPP может выпустить utility token для:</p>
+<pre class=""><code>Функции токена:
+  ├── Validator staking (skin in the game для correct validation)
+  ├── Storage incentives (reward nodes holding CID content)
+  ├── Governance (голосование за validator model upgrades)
+  └── Training data marketplace (оплата за verified game tuples)
+  
+ВАЖНО: Token — это V2+. V1 — простой SaaS revenue model.
+       Не продавать token vision в pre-seed pitch.
+       Mention only если investor сам спрашивает об infra monetization.</code></pre>
+<hr>
+<h2>VI. Дорога к консорциуму: кто должен подписаться</h2>
+<h3>6.1. Stakeholders и их интересы</h3>
+<pre class=" ascii-art"><code>╭──────────────────────────────────────────────────────────────────────╮
+│  AI LABS (FRONTIER)                                                  │
+│  Anthropic, OpenAI, Google DeepMind, Meta AI                        │
+│                                                                      │
+│  Интерес: получить verified training data от внешних источников.    │
+│  Барьер: они конкуренты, каждый хочет proprietary standard.         │
+│  Вход: через &quot;OpenAI as mediator&quot; (OpenAI уже говорит про open std) │
+│        или через Anthropic Startup Fund relationship                │
+╰──────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────╮
+│  OPEN MODEL HOSTS                                                    │
+│  HuggingFace, Together.ai, Replicate, Baseten                       │
+│                                                                      │
+│  Интерес: стать canonical validator hosting layer.                  │
+│  Барьер: доп. compute без немедленной monетизации.                  │
+│  Вход: через HuggingFace Inference Endpoints business               │
+│        (CPP даёт им new revenue stream: validation-as-a-service)   │
+╰──────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────╮
+│  SOVEREIGN AI LABS                                                   │
+│  G42 (Jais), TII (Falcon), KAUST, Sber (GigaChat), Yandex (YaGPT)  │
+│                                                                      │
+│  Интерес: независимость от западных стандартов + нейтральный canon. │
+│  Барьер: инвестиции в новую инфраструктуру.                          │
+│  Вход: CPP как независимый от западных провайдеров стандарт.         │
+│        Sovereign AI narrative работает здесь идеально.              │
+╰──────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────╮
+│  ENTERPRISE USERS                                                    │
+│  Sber, G42, MTS AI, Tinkoff, Aramco Digital, Big Four               │
+│                                                                      │
+│  Интерес: compliance, cost savings, портируемость данных.           │
+│  Барьер: procurement cycle, security review.                         │
+│  Вход: через retroactive savings analysis (ROI-first sales)         │
+╰──────────────────────────────────────────────────────────────────────╯
+
+╭──────────────────────────────────────────────────────────────────────╮
+│  STANDARDS BODIES                                                    │
+│  W3C, IETF, IEEE, ISO/IEC JTC1                                      │
+│                                                                      │
+│  Интерес: нейтральный, технически обоснованный стандарт.            │
+│  Барьер: долгий process (2-5 лет до ratification).                  │
+│  Вход: начать с W3C Community Group (6-12 месяцев до Rec track)     │
+╰──────────────────────────────────────────────────────────────────────╯</code></pre>
+<h3>6.2. Стратегия сборки консорциума</h3>
+<pre class=" ascii-art"><code>Фаза 1 (2026): Proof of concept + первые два партнёра
+─────────────────────────────────────────────────────────────────────
+  Цель: HuggingFace + один Sovereign AI lab (G42 или Falcon)
+  
+  Почему HuggingFace первый:
+    - Уже hosting открытых моделей
+    - Business case очевиден (validation-as-a-service revenue)
+    - Нет конкурентных противоречий с CPP
+    - Клема де Вьетт / Джулиан Симон (HuggingFace) доступны
+  
+  Как войти:
+    - Open-source CPP validator spec
+    - Publish на HuggingFace Hub первый validator checkpoint
+    - Предложить co-authorship на arXiv preprint
+    - Попросить об интеграции в Inference Endpoints API
+
+Фаза 2 (2027): Frontier labs как &quot;mediators&quot;
+─────────────────────────────────────────────────────────────────────
+  Цель: OpenAI + Anthropic как участники (не как конкурент)
+  
+  Подход:
+    - CPP как &quot;neutral&quot; protocol (не принадлежит никому из них)
+    - Предложить обоим: &quot;we can make your cached data interoperable&quot;
+    - OpenAI's data partnerships team (они публично говорят про open AI)
+    - Anthropic Startup Fund → relationship building
+  
+  Ключевой аргумент:
+    &quot;Если все labs используют один canonical encoding,
+     human preference data (RLHF) становится сопоставимой.
+     Это ускоряет research для всех.&quot;
+
+Фаза 3 (2028): W3C Community Group
+─────────────────────────────────────────────────────────────────────
+  Цель: Открыть W3C Community Group &quot;Verifiable AI Context&quot;
+  
+  Action:
+    - 5+ member organizations (HuggingFace + 2 labs + 2 enterprise)
+    - Подать заявку в W3C: https://www.w3.org/community/
+    - Представить CPP spec как основу для Community Group Note
+    - Начать путь к W3C Recommendation (3-5 лет)</code></pre>
+<hr>
+<h2>VII. Почему это 5-летнее winner-take-all окно</h2>
+<h3>7.1. Структурные силы</h3>
+<pre class="hljs"><code class="hljs language-erlang">Три конвергирующих тренда открывают окно сейчас:
+
+<span class="hljs-number">1</span>. Взрыв multi-agent систем (<span class="hljs-number">2025</span>-<span class="hljs-number">2027</span>)
+   ────────────────────────────────────────────────────────
+   Claude Code, Devin, OpenHands, ROX.ONE — всё это системы,
+   где <span class="hljs-number">5</span>-<span class="hljs-number">100</span>+ агентов работают параллельно над одной задачей.
+   Координация через CID — это единственный масштабируемый
+   механизм при &gt;<span class="hljs-number">10</span> агентах.
+
+<span class="hljs-number">2</span>. Регуляторный push (<span class="hljs-number">2026</span>-<span class="hljs-number">2028</span>)
+   ────────────────────────────────────────────────────────
+   EU AI Act полностью в силе с августа <span class="hljs-number">2026</span>.
+   Высокорисковые AI системы обязаны иметь:
+     - Data lineage
+     - Model documentation
+     - Audit logging
+     - Human oversight mechanisms
+   CPP закрывает все четыре из коробки.
+   Альтернатива: custom homegrown audit system за <span class="hljs-string">$1</span>-<span class="hljs-number">5</span>M/год.
+
+<span class="hljs-number">3</span>. Обучение моделей дорожает
+   ────────────────────────────────────────────────────────
+   GPT-<span class="hljs-number">5</span> обошёлся OpenAI оценочно <span class="hljs-string">$1</span>00M+.
+   Следующее поколение — <span class="hljs-string">$5</span>00M-<span class="hljs-string">$1</span>B per training run.
+   Качество обучения напрямую зависит от качества data.
+   Verified game tuples → better gradient signal.
+   AI labs будут платить premium за verified data. </code></pre>
+<h3>7.2. Window of opportunity</h3>
+<pre class=""><code>                        Сейчас                              +5 лет
+                          │                                     │
+Frontier labs         ────┼──── &quot;это неважно&quot;                  │
+стандартизируют             └── но скоро начнут думать ─────────►
+canonical layer                                                  │
+                                                                 │
+Multi-agent           ────┼──── растёт ─────────────────────────►
+mainstream                                                       │
+adoption                                                         │
+                                                                 │
+Regulatory            ────┼──── вступает в силу ────────────────►
+pressure                  │                                      │
+(EU AI Act)                                                      │
+                                                                 │
+CPP window            ────┼─────────────────────────────────────►
+                          │    18 месяцев для                    │
+                          │    canonical layer lock-in           │
+                                                                 │
+После window:             ЛИБО CPP = стандарт                    │
+                          ЛИБО Anthropic/OpenAI делает           │
+                               собственный несовместимый стандарт│</code></pre>
+<h3>7.3. Precedents: кто выиграл winner-take-all в infrastructure</h3>
+<pre class=" ascii-art"><code>┌──────────────────────────────────────────────────────────────────────┐
+│ Технология    │ Кто выиграл    │ Ключевой момент             │ Итог  │
+├───────────────┼────────────────┼─────────────────────────────┼───────┤
+│ Web URLs      │ Tim Berners-Lee│ Опубликовал RFC до стандарт.│ W3C   │
+│               │ / W3C          │ как частное                 │ std   │
+├───────────────┼────────────────┼─────────────────────────────┼───────┤
+│ DNS           │ IANA / ICANN   │ Стал нейтральным оператором │ Global│
+│               │                │ до того, как кто-то другой  │ infra │
+├───────────────┼────────────────┼─────────────────────────────┼───────┤
+│ Git           │ Linus Torvalds │ Open source, стал           │ де-   │
+│               │ / GitHub       │ defacto раньше Enterprise   │ факто │
+├───────────────┼────────────────┼─────────────────────────────┼───────┤
+│ Docker        │ Solomon Hykes  │ Канонизировал container fmt │ OCI   │
+│               │ / Docker Inc   │ до того, как CoreOS/rkt     │ стд   │
+├───────────────┼────────────────┼─────────────────────────────┼───────┤
+│ IPFS/CIDv1    │ Protocol Labs  │ Canonical content-addressing│ Web3  │
+│               │                │ protocol                    │ base  │
+└──────────────────────────────────────────────────────────────────────┘
+
+Паттерн: winner — тот, кто публикует open spec + reference impl ПЕРВЫМ,
+         до того, как крупные игроки решили, что это важно.
+         Потом уже поздно: lock-in создан.</code></pre>
+<h3>7.4. Специфика AI canonical layer</h3>
+<p>В отличие от предыдущих winner-take-all infrastructure plays, CPP имеет
+уникальный network effect:</p>
+<pre class="hljs"><code class="hljs language-haskell">Стандартный network effect: ценность растёт с числом пользователей.
+
+<span class="hljs-type">CPP</span> network effect: ценность растёт с числом ВЕРИФИЦИРОВАННЫХ КОРТЕЖЕЙ.
+
+  <span class="hljs-number">100</span> компаний × 1M verified tuples/год = 100M tuples/год
+  <span class="hljs-number">1000</span> компаний × 1M = 1B tuples/год
+  
+  Эти tuples — training <span class="hljs-class"><span class="hljs-keyword">data</span> для следующего поколения моделей.</span>
+  Лабы, которые хотят этот <span class="hljs-class"><span class="hljs-keyword">data</span>, вынуждены поддерживать <span class="hljs-type">CPP</span> canonical encoding.</span>
+  
+  → Обратная монопольная позиция: не пользователи, а ПОСТАВЩИКИ training <span class="hljs-class"><span class="hljs-keyword">data</span></span>
+    зависят от canonical layer.</code></pre>
+<hr>
+<h2>Заключение: почему этот тезис правдоподобен</h2>
+<p>Гипотеза о канонических хэшах как substrate для AI feedback loops не
+является спекуляцией из первых принципов. Она строится на трёх эмпирических
+наблюдениях:</p>
+<ol>
+<li><p><strong>Content-addressing работает в других контекстах.</strong> IPFS, BitTorrent, Git —
+все они используют криптографические хэши для дедупликации и верификации.
+Применение к AI-контексту — это экстраполяция паттерна, а не новая идея.</p>
+</li>
+<li><p><strong>Качество training data определяет качество модели.</strong> Это установлено
+эмпирически (Chinchilla, scaling laws, RLHF research). Верифицированные
+кортежи лучше неверифицированных по определению.</p>
+</li>
+<li><p><strong>Окно открыто.</strong> На момент написания (май 2026) ни один из frontier labs
+не опубликовал cross-provider canonical encoding standard. CPP — первая
+публичная попытка.</p>
+</li>
+</ol>
+<pre class=" ascii-art"><code>╭──────────────────────────────────────────────────────────────────────╮
+│                                                                      │
+│  Ставка CPP:                                                         │
+│                                                                      │
+│  Краткосрочно (1-3 года):  cost saving + compliance                 │
+│     → достаточно для pre-seed + seed + первых $5M ARR               │
+│                                                                      │
+│  Среднесрочно (3-7 лет):  canonical standard для AI context         │
+│     → industry consortium + W3C ratification                        │
+│     → $50-200M ARR from infra licensing + training data marketplace │
+│                                                                      │
+│  Долгосрочно (7+ лет):   substrate для verified AI economy          │
+│     → unclear ceiling; comparable to Stripe ($50B) или Twilio       │
+│                                                                      │
+╰──────────────────────────────────────────────────────────────────────╯</code></pre>
+<p>Это не гарантированный outcome. Но это <strong>обоснованная ставка</strong> с хорошим
+risk/reward соотношением: downside ограничен (утилитарный SaaS всё равно
+работает), upside — потенциально трансформативен.</p>
+<hr>
+<p><em>Следующее: <code>04-SECURITY-AND-VALIDATOR-ARCHITECTURE.md</code> — детальная
+архитектура криптографической безопасности и validator infrastructure.</em></p>
+
+  </div>
+</body>
+</html>

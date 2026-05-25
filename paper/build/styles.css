@@ -1,0 +1,794 @@
+/* ============================================================
+   CPP Paper — Print & Screen Stylesheet  v4
+   Design: Pentagram-tier research publication
+   Color: graphite (#1a1a1a), cream (#f5f5f0), accent #00d4aa
+   Fonts: system-ui stack — no external CDN dependencies
+   v4: title-page treatment, chapter breaks, code padding, ASCII font
+   ============================================================ */
+
+/* ── Page Setup ─────────────────────────────────────────────── */
+@page {
+  size: A4;
+  margin: 22mm 18mm 25mm 18mm;
+
+  @top-left {
+    content: "Context Provenance Protocol";
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 7.5pt;
+    color: #888888;
+    letter-spacing: 0.03em;
+  }
+  @top-center {
+    content: var(--running-header, "");
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 7.5pt;
+    color: #888888;
+    letter-spacing: 0.03em;
+  }
+  @top-right {
+    content: "v0.1 · 2026-05-21";
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 7.5pt;
+    color: #888888;
+  }
+  @bottom-center {
+    content: counter(page) " / " counter(pages);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 9pt;
+    color: #555555;
+  }
+}
+
+/* Cover page: full-bleed, no margins, no headers/footers, no page numbers */
+@page cover {
+  size: A4;
+  margin: 0;
+  @top-left   { content: ""; }
+  @top-center { content: ""; }
+  @top-right  { content: ""; }
+  @bottom-center { content: ""; }
+}
+
+/* Title page: no headers/footers, no page number */
+@page title-page {
+  size: A4;
+  margin: 0;
+  @top-left   { content: ""; }
+  @top-center { content: ""; }
+  @top-right  { content: ""; }
+  @bottom-center { content: ""; }
+}
+
+/* First page of each doc: suppress headers on cover/title pages */
+@page :first {
+  margin: 0;
+  @top-left   { content: ""; }
+  @top-center { content: ""; }
+  @top-right  { content: ""; }
+  @bottom-center { content: ""; }
+}
+
+/* ── Reset & Base ───────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 10.5pt;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: #1a1a1a;
+  background: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+/* ── Cover page body class ──────────────────────────────────── */
+body.cover-page {
+  background: #050505;
+  color: #e8e8e0;
+  page: cover;
+}
+
+body.cover-page .paper {
+  page: cover;
+  background: linear-gradient(to bottom, #000000 0%, #0d0d0d 50%, #050505 100%);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  padding: 0;
+  max-width: none;
+  /* Constrain to exactly one A4 page: 297mm tall */
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+/* Cover pre block (logo ASCII art) — centered, dramatic */
+body.cover-page pre,
+body.cover-page .paper > pre {
+  background: transparent !important;
+  border-left: none !important;
+  border-radius: 0;
+  text-align: center;
+  padding: 0.6rem 1rem;
+  font-size: 8.5pt;
+  color: #00d4aa;
+  box-shadow: none;
+  width: 100%;
+  page-break-inside: avoid;
+}
+
+body.cover-page h1,
+body.cover-page h2,
+body.cover-page h3,
+body.cover-page p {
+  color: #e8e8e0;
+  text-align: center;
+  border: none;
+}
+
+body.cover-page h1 {
+  font-size: 34pt;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  page-break-before: avoid;
+  color: #ffffff;
+}
+
+body.cover-page h2 {
+  font-size: 12pt;
+  font-weight: 400;
+  color: #aaaaaa;
+  border-bottom: none;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.4rem;
+}
+
+/* Divider lines on cover */
+body.cover-page hr {
+  background: rgba(255,255,255,0.12);
+  margin: 6pt 0;
+  height: 0.5pt;
+}
+
+/* Version/date footer bar on cover */
+body.cover-page .cover-footer-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28pt;
+  background: rgba(0,212,170,0.07);
+  border-top: 0.5pt solid rgba(0,212,170,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7.5pt;
+  color: #555555;
+  letter-spacing: 0.08em;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Version/date footer on cover (legacy) */
+body.cover-page .cover-meta {
+  position: absolute;
+  bottom: 24mm;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 9pt;
+  color: #555555;
+  letter-spacing: 0.05em;
+}
+
+/* ── Title Page ─────────────────────────────────────────────── */
+/* Chromium --print-to-pdf reliably breaks pages when block height causes overflow.
+   A4 content area = 297mm - 22mm top - 25mm bottom = 250mm.
+   We use display:block + height:250mm so the block physically fills the page,
+   and padding-top~90mm vertically centres the ~70mm content within it. */
+.title-page {
+  display: block;
+  /* 255mm > A4 content area (250mm) — guarantees Chromium overflows to next page */
+  height: 255mm;
+  padding-top: 80mm;
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  text-align: center !important;
+  background: #ffffff;
+  overflow: hidden;
+  margin: 0;
+}
+
+/* page-break div: belt + suspenders after the height-based overflow */
+.page-break {
+  page-break-before: always;
+  break-before: page;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* CPP logo: simple text-based badge, no Unicode block chars */
+.tp-logo {
+  display: block;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 11pt;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  color: #00d4aa;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 44pt;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.tp-title {
+  font-size: 34pt;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: #1a1a1a;
+  margin: 0 0 10pt;
+  line-height: 1.1;
+}
+
+.tp-subtitle {
+  font-size: 14pt;
+  color: #555555;
+  font-weight: 400;
+  margin: 0 auto;
+  max-width: 400pt;
+  line-height: 1.4;
+}
+
+.tp-divider {
+  width: 60pt;
+  height: 2pt;
+  background: #00d4aa;
+  margin: 28pt auto;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.tp-meta {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 8.5pt;
+  color: #888888;
+  line-height: 1.9;
+  font-variant-ligatures: none;
+  font-feature-settings: "calt" 0, "liga" 0;
+}
+
+/* ── Paper Container ────────────────────────────────────────── */
+.paper {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 0;
+  background: #ffffff;
+  /* Chapter counter for H1 section labels */
+  counter-reset: chapter;
+}
+
+@media print {
+  .paper {
+    max-width: none;
+    padding: 0;
+    counter-reset: chapter;
+  }
+  body { background: #ffffff; }
+  body.cover-page { background: #0d0d0d !important; }
+}
+
+/* ── Typography — Headings ──────────────────────────────────── */
+
+/* H1 section treatment — each is a new chapter */
+h1 {
+  font-size: 30pt;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #1a1a1a;
+  margin: 80pt 0 1.2rem;
+  page-break-before: always;
+  counter-increment: chapter;
+  position: relative;
+}
+
+/* Chapter label above H1: "Часть · I" */
+h1::before {
+  content: "§ " counter(chapter, upper-roman);
+  display: block;
+  font-size: 8.5pt;
+  font-family: 'JetBrains Mono', 'Cascadia Mono', 'Fira Code', 'SF Mono', Menlo, Consolas, monospace;
+  color: #00d4aa;
+  letter-spacing: 0.12em;
+  margin-bottom: 14pt;
+  font-weight: 400;
+  text-transform: uppercase;
+  counter-increment: none;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Title-page H1 — override all general h1 rules */
+.title-page h1.tp-title {
+  page-break-before: avoid !important;
+  break-before: avoid !important;
+  counter-increment: chapter 0 !important;
+  margin: 0 0 10pt !important;
+  font-size: 34pt !important;
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+  text-align: center !important;
+}
+
+.title-page h1.tp-title::before {
+  content: none !important;
+}
+
+/* First markdown H1 when it is the first direct child of .paper (no title-page) */
+h1:first-child,
+.paper > h1:first-child {
+  page-break-before: avoid;
+  margin-top: 36pt;
+  font-size: 34pt;
+  border-bottom: 2pt solid #1a1a1a;
+  padding-bottom: 10pt;
+  counter-increment: chapter 0;
+}
+
+h1:first-child::before,
+.paper > h1:first-child::before {
+  content: none;
+}
+
+/* First markdown H1 immediately after the title-page div.
+   Allow page-break-before:always (from general h1 rule) so it starts on page 2.
+   No chapter label (this is the doc title heading, not a numbered section). */
+.title-page + h1 {
+  margin-top: 36pt;
+  font-size: 34pt;
+  border-bottom: 2pt solid #1a1a1a;
+  padding-bottom: 10pt;
+  counter-increment: chapter 0;
+}
+
+.title-page + h1::before {
+  content: none !important;
+}
+
+/* Drop cap for the first paragraph following first H1 */
+.paper > h1:first-of-type + p::first-letter {
+  font-size: 3.2em;
+  font-weight: 800;
+  line-height: 0.85;
+  float: left;
+  margin: 0 4pt 0 0;
+  color: #1a1a1a;
+}
+
+h2 {
+  font-size: 18pt;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: #1a1a1a;
+  margin: 24pt 0 0.8rem;
+  page-break-after: avoid;
+  border-bottom: 1px solid #dddddd;
+  padding-bottom: 4pt;
+}
+
+h3 {
+  font-size: 14pt;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: #333333;
+  margin: 18pt 0 0.6rem;
+  page-break-after: avoid;
+}
+
+h4 {
+  font-size: 12pt;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #555555;
+  margin: 1.4rem 0 0.5rem;
+  page-break-after: avoid;
+}
+
+h5 {
+  font-size: 11pt;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #555555;
+  margin: 1.2rem 0 0.4rem;
+  page-break-after: avoid;
+}
+
+h6 {
+  font-size: 10.5pt;
+  font-weight: 600;
+  color: #666666;
+  margin: 1rem 0 0.4rem;
+}
+
+/* ── Typography — Body ──────────────────────────────────────── */
+p {
+  margin: 0 0 1rem;
+  orphans: 3;
+  widows: 3;
+  hyphens: auto;
+}
+
+strong, b {
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+em, i {
+  font-style: italic;
+}
+
+/* ── Links ──────────────────────────────────────────────────── */
+a {
+  color: #00b896;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0,212,170,0.35);
+  transition: border-color 0.15s;
+}
+a:hover { border-bottom-color: #00d4aa; }
+
+@media print {
+  a {
+    color: #1a1a1a;
+    border-bottom: none;
+    text-decoration: underline;
+    text-decoration-color: #cccccc;
+  }
+}
+
+/* ── Horizontal Rules — with center crest mark ──────────────── */
+hr {
+  border: 0;
+  height: 1pt;
+  background: linear-gradient(to right, transparent, #cccccc, transparent);
+  margin: 18pt 0;
+  position: relative;
+  overflow: visible;
+}
+
+hr::after {
+  content: "§";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  padding: 0 6pt;
+  font-size: 9pt;
+  color: #aaaaaa;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Cover-page hr has no crest — plain line */
+body.cover-page hr::after {
+  content: none;
+}
+
+/* ── Lists ──────────────────────────────────────────────────── */
+ul, ol {
+  padding-left: 20pt;
+  margin: 0 0 1rem;
+}
+
+li {
+  margin-bottom: 0.3rem;
+  line-height: 1.5;
+}
+
+li > ul, li > ol {
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
+}
+
+/* ── Code — Inline ──────────────────────────────────────────── */
+code {
+  font-family: 'JetBrains Mono', 'Cascadia Mono', 'Fira Code', 'Cascadia Code',
+               'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 9.5pt;
+  background: #f0f0e8;
+  color: #c7254e;
+  padding: 1pt 4pt;
+  border-radius: 2pt;
+  white-space: nowrap;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+
+/* ── Code — Blocks ──────────────────────────────────────────── */
+pre {
+  font-family: 'JetBrains Mono', 'Cascadia Mono', 'Fira Code', 'Cascadia Code',
+               'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  background: #1a1a1a;
+  color: #e8e8e0;
+  padding: 14pt 16pt;
+  border-radius: 4pt;
+  border-left: 3pt solid #00d4aa;
+  overflow-x: auto;
+  margin: 12pt 0;
+  page-break-inside: avoid;
+  white-space: pre;
+  word-wrap: normal;
+  tab-size: 4;
+  -moz-tab-size: 4;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  white-space: pre;
+  word-break: normal;
+  word-wrap: normal;
+  quotes: none;
+}
+
+/* ── ASCII art pre blocks ────────────────────────────────────── */
+/* Detected by .ascii-art class added in build.ts */
+pre.ascii-art {
+  background: #111111;
+  border-left: 3pt solid #00d4aa;
+  text-align: left;
+  font-size: 8.5pt;
+  letter-spacing: 0;
+  line-height: 1.4;
+  page-break-inside: avoid;
+  display: block;
+  margin: 14pt auto;
+  /* Subtle shadow for drama */
+  box-shadow: 0 2pt 8pt rgba(0,0,0,0.4);
+  /* Ensure box-drawing chars render correctly */
+  font-variant-ligatures: none;
+  font-feature-settings: "calt" 0, "liga" 0;
+}
+
+/* ── Tables ─────────────────────────────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12pt 0 16pt;
+  font-size: 0.93rem;
+  page-break-inside: auto;
+}
+
+thead {
+  background: #f5f5f0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  display: table-header-group;
+}
+
+tfoot {
+  display: table-footer-group;
+}
+
+thead th {
+  padding: 6pt 10pt;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  border-bottom: 2pt solid #1a1a1a;
+  color: #1a1a1a;
+}
+
+thead th[align="right"],
+tbody td[align="right"] {
+  text-align: right;
+}
+
+thead th[align="center"],
+tbody td[align="center"] {
+  text-align: center;
+}
+
+tbody tr {
+  border-bottom: 1px solid #e0e0d8;
+  page-break-inside: avoid;
+  page-break-after: auto;
+}
+
+tbody tr:nth-child(even) {
+  background: #faf9f4;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+tbody tr:hover {
+  background: #f0faf8;
+}
+
+tbody td {
+  padding: 6pt 10pt;
+  vertical-align: top;
+}
+
+/* ── Block Quotes ───────────────────────────────────────────── */
+blockquote {
+  border-left: 3pt solid #00d4aa;
+  margin: 14pt 0;
+  padding: 8pt 12pt 8pt 14pt;
+  background: #f7fffe;
+  border-radius: 0 4pt 4pt 0;
+  page-break-inside: avoid;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+blockquote p {
+  font-size: 1.02rem;
+  font-style: normal;
+  line-height: 1.6;
+  color: #333333;
+  margin-bottom: 0;
+}
+
+blockquote p strong {
+  font-style: normal;
+  color: #1a1a1a;
+}
+
+/* ── Images ─────────────────────────────────────────────────── */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1.2rem auto;
+}
+
+/* ── Print Overrides ────────────────────────────────────────── */
+@media print {
+  pre {
+    background: #1a1a1a !important;
+    color: #e8e8e0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  pre.ascii-art {
+    background: #111111 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  thead {
+    background: #f5f5f0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  tbody tr:nth-child(even) {
+    background: #faf9f4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  blockquote {
+    background: #f7fffe !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  h1 { page-break-before: always; }
+  h1:first-child, .paper > h1:first-child { page-break-before: avoid; }
+  h2, h3, h4 { page-break-after: avoid; }
+  table { page-break-inside: auto; }
+  pre { page-break-inside: avoid; }
+  blockquote { page-break-inside: avoid; }
+  li { page-break-inside: avoid; }
+}
+
+/* ── highlight.js overrides ─────────────────────────────────── */
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+/* ── Colophon ────────────────────────────────────────────────── */
+.colophon {
+  margin-top: 48pt;
+  padding-top: 24pt;
+  border-top: 2pt solid #1a1a1a;
+  font-size: 9pt;
+  color: #555555;
+  line-height: 1.7;
+  page-break-before: always;
+}
+
+.colophon h2 {
+  font-size: 14pt;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: none;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 12pt;
+}
+
+.colophon p {
+  margin-bottom: 0.5rem;
+  hyphens: none;
+}
+
+.colophon a {
+  color: #555555;
+  border-bottom: 1px solid #cccccc;
+}
+
+@media print {
+  .colophon {
+    color: #555555;
+  }
+}
+
+/* ── Running header override (injected per-doc via style block) ── */
+/* Each doc gets <style>:root { --running-header: "Title"; }</style> */
+
+/* ── Key number highlight box (investor briefing) ──────────── */
+.key-metric-box {
+  border: 2pt solid #00d4aa;
+  border-radius: 4pt;
+  padding: 18pt 24pt;
+  margin: 18pt 0;
+  text-align: center;
+  background: rgba(0, 212, 170, 0.04);
+  page-break-inside: avoid;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.key-metric-value {
+  font-size: 36pt;
+  font-weight: 800;
+  color: #1a1a1a;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.key-metric-label {
+  font-size: 10pt;
+  color: #555555;
+  margin-top: 6pt;
+  line-height: 1.4;
+}

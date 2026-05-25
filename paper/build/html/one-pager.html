@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPP — One-Pager · Context Provenance Protocol</title>
+  <link rel="stylesheet" href="file:///home/dev/serialization_design/paper/build/styles.css">
+  <style>pre code.hljs{display:block;overflow-x:auto;padding:1em}code.hljs{padding:3px 5px}.hljs{color:#abb2bf;background:#282c34}.hljs-comment,.hljs-quote{color:#5c6370;font-style:italic}.hljs-doctag,.hljs-formula,.hljs-keyword{color:#c678dd}.hljs-deletion,.hljs-name,.hljs-section,.hljs-selector-tag,.hljs-subst{color:#e06c75}.hljs-literal{color:#56b6c2}.hljs-addition,.hljs-attribute,.hljs-meta .hljs-string,.hljs-regexp,.hljs-string{color:#98c379}.hljs-attr,.hljs-number,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-pseudo,.hljs-template-variable,.hljs-type,.hljs-variable{color:#d19a66}.hljs-bullet,.hljs-link,.hljs-meta,.hljs-selector-id,.hljs-symbol,.hljs-title{color:#61aeee}.hljs-built_in,.hljs-class .hljs-title,.hljs-title.class_{color:#e6c07b}.hljs-emphasis{font-style:italic}.hljs-strong{font-weight:700}.hljs-link{text-decoration:underline}</style>
+  <style>
+      @page { @top-center { content: "One-Pager"; font-family: system-ui, -apple-system, sans-serif; font-size: 7.5pt; color: #888888; } }
+    </style>
+</head>
+<body class="">
+  <div class="paper">
+    <h1>Context Provenance Protocol</h1>
+<h2>One-pager для cold outreach</h2>
+<hr>
+<pre class=""><code>   ┌────────────────────────────────────────────────────────────┐
+   │                                                            │
+   │           ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄                │
+   │           ████ C P P  ▸  v1.0.0-rc.1 ████                   │
+   │           ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀                │
+   │                                                            │
+   │  Stripe for LLM context.  Open standard. Cross-provider.   │
+   │                                                            │
+   └────────────────────────────────────────────────────────────┘</code></pre>
+<h3>Что мы делаем</h3>
+<p><strong>Content-addressed canonical encoding для LLM agentic harnesses.</strong></p>
+<p>Когда несколько ИИ-агентов / разработчиков / пользователей загружают один и тот же контекст (codebase, документация, политики) — провайдер прячёт это под цифрами «total tokens». Мы делаем канонизацию, при которой:</p>
+<ul>
+<li><strong>Бит-в-бит идентичные</strong> payload&#39;ы получают идентичные хэши.</li>
+<li>Провайдерский prompt cache <strong>гарантированно</strong> срабатывает.</li>
+<li>Multi-agent системы получают <strong>общий язык</strong> для shared context.</li>
+<li>Все AI-решения становятся <strong>криптографически верифицируемыми</strong>.</li>
+</ul>
+<h3>Зачем это бизнесу</h3>
+<pre class=" ascii-art"><code>┌──────────────────────────────────────────────────────────────┐
+│   30-70%  экономии на input-токенах для команд с             │
+│   ▔▔▔▔▔▔  shared-context workflow (codebase, docs, agents)   │
+├──────────────────────────────────────────────────────────────┤
+│   1000×   быстрее audit query &quot;что AI видел в момент X&quot;      │
+│   ▔▔▔▔▔                                                       │
+├──────────────────────────────────────────────────────────────┤
+│   EU AI Act / GDPR / PDPL — out-of-the-box compliance        │
+│   через signed Calculations + reproducible chain             │
+├──────────────────────────────────────────────────────────────┤
+│   Multi-agent coordination через CIDs вместо текстовых       │
+│   blob'ов — основа для autonomous engineering teams          │
+└──────────────────────────────────────────────────────────────┘</code></pre>
+<h3>Текущий статус</h3>
+<ul>
+<li>✅ <strong>v1.0.0-rc.1</strong> опубликован на github.com/agisota/cpp-core (MIT, public)</li>
+<li>✅ 83 теста passing, CI green</li>
+<li>✅ Full design document (492 строк)</li>
+<li>✅ Reference implementation: TypeScript + Bun + IPLD + did:key + Ed25519</li>
+<li>🔘 Empirical validation experiments (Q3 2026)</li>
+<li>🔘 First 3-5 pilots (Q3 2026)</li>
+<li>🔘 Pre-seed $500K-$1M (Q4 2026)</li>
+</ul>
+<h3>Почему именно сейчас</h3>
+<pre class=""><code>                 2024            2025            2026            2027+
+                  │               │               │               │
+Multi-agent      │               │   ▲           │               │
+adoption     ────┴───────────────┘   │           │               │
+                                     │           │   ↑ explosion │
+                                     │   ── ── ──┘               │
+EU AI Act        │               │               │ FULL FORCE   │
+                 │       ▲       │               │               │
+RegTech AI       │ ── ── ┘       │               │ → mandatory   │
+                                                                 │
+LLM cost         │               │               │ becomes       │
+optimization     ── ── ── ── ── ── ── ── ── ── ── major P&amp;L     │
+                                                                 │
+CPP                                          ▲                   │
+opportunity                                  │ 18-month window  │
+window                            ── ── ── ──┘                   │
+                                  to capture canonical layer    │</code></pre>
+<h3>Deep гипотеза</h3>
+<blockquote>
+<p>Канонизация контекста — это не оптимизация затрат.
+Это формирование training signal для следующего поколения моделей.
+Тот, кто канонизирует первым — становится infrastructure layer.</p>
+</blockquote>
+<h3>Team</h3>
+<ul>
+<li><strong>Founder/CEO</strong> — AI infrastructure architect; reference implementation lead</li>
+<li><strong>Research Lead</strong> <em>(to hire)</em> — cryptography + zkML</li>
+<li><strong>GTM Lead</strong> <em>(to hire)</em> — enterprise SaaS sales</li>
+</ul>
+<h3>Ask</h3>
+<pre class=""><code>   ┌──────────────────────────────────────────────────────┐
+   │                                                      │
+   │   Pre-seed:  $500K — $1M                             │
+   │   Stage:     Q3 2026                                 │
+   │   Use:       4 hires + 5 pilots + research validation │
+   │   Runway:    18 месяцев до Seed                       │
+   │                                                      │
+   │   Контакт:   founder@cpp.dev                         │
+   │              github.com/agisota/cpp-core              │
+   │                                                      │
+   └──────────────────────────────────────────────────────┘</code></pre>
+<hr>
+<blockquote>
+<p>Не хотим продавать «оптимизацию затрат».
+Хотим строить инфраструктуру для AI-economy.
+Cost saving — это way in.</p>
+</blockquote>
+
+  </div>
+</body>
+</html>
